@@ -11,6 +11,20 @@
   <body>
     <div id="app">
       <canvas id="sim"></canvas>
+      <div id="toolbar">
+        <button id="tool-select" class="tool-btn active" data-tool="select" title="Select / move / lock">
+          Select
+        </button>
+        <button id="tool-draw" class="tool-btn" data-tool="draw" title="Draw a track or line">Draw</button>
+        <button id="tool-ball" class="tool-btn" data-tool="ball" title="Place a ball">Ball</button>
+        <button id="tool-box" class="tool-btn" data-tool="box" title="Place a box">Box</button>
+        <div class="toolbar-divider"></div>
+        <button id="play-btn" class="tool-btn accent">Play</button>
+        <button id="clear-btn" class="tool-btn danger">Clear</button>
+      </div>
+      <div id="hint">
+        Right-click an object to lock/unlock it &middot; select a ball and drag its blue handle to set spin
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
