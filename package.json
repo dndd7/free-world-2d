@@ -1,0 +1,20 @@
+{
+  "name": "free-world-2d",
+  "description": "A 2D physics simulation sandbox built with Matter.js.",
+  "license": "MIT",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/matter-js": "^0.20.2",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.0"
+  },
+  "dependencies": {
+    "matter-js": "^0.20.0"
+  }
+}
