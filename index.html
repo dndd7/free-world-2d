@@ -11,30 +11,80 @@
   <body>
     <div id="app">
       <canvas id="sim"></canvas>
-      <div id="toolbar">
-        <button id="tool-select" class="tool-btn active" data-tool="select" title="Select / move / lock">
-          Select
+
+      <nav id="palette" aria-label="Tools">
+        <button id="tool-select" class="palette-btn active" data-tool="select" title="Select, move and lock objects">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l14 7-6 2-2 6z" /></svg>
+          <span>Select</span>
         </button>
-        <button id="tool-draw" class="tool-btn" data-tool="draw" title="Draw a track or line">Draw</button>
-        <button id="tool-plank" class="tool-btn" data-tool="plank" title="Drag out a straight plank">Plank</button>
-        <button id="tool-ball" class="tool-btn" data-tool="ball" title="Place a ball">Ball</button>
-        <button id="tool-box" class="tool-btn" data-tool="box" title="Place a box">Box</button>
-        <button id="tool-triangle" class="tool-btn" data-tool="triangle" title="Place a triangle wedge">
-          Triangle
+        <button id="tool-draw" class="palette-btn" data-tool="draw" title="Freehand draw a track or wall">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17c3-8 5-8 7-3s4 3 6-3 3-2 5 1" /></svg>
+          <span>Draw</span>
         </button>
-        <button id="tool-goal" class="tool-btn" data-tool="goal" title="Place a goal zone">Goal</button>
-        <div class="toolbar-divider"></div>
-        <button id="play-btn" class="tool-btn accent">Play</button>
-        <button id="clear-btn" class="tool-btn danger">Clear</button>
-        <div class="toolbar-divider"></div>
-        <button id="export-btn" class="tool-btn" title="Download this scene as a JSON file">Export</button>
-        <button id="import-btn" class="tool-btn" title="Load a previously exported scene">Import</button>
+        <button id="tool-plank" class="palette-btn" data-tool="plank" title="Drag out a straight plank">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="2.5" y="10" width="19" height="4" rx="1" transform="rotate(-25 12 12)" />
+          </svg>
+          <span>Plank</span>
+        </button>
+        <button id="tool-ball" class="palette-btn" data-tool="ball" title="Place a ball">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /></svg>
+          <span>Ball</span>
+        </button>
+        <button id="tool-box" class="palette-btn" data-tool="box" title="Place a box">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="1.5" /></svg>
+          <span>Box</span>
+        </button>
+        <button id="tool-triangle" class="palette-btn" data-tool="triangle" title="Place a triangle wedge">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19h14L5 5z" /></svg>
+          <span>Triangle</span>
+        </button>
+        <button id="tool-goal" class="palette-btn" data-tool="goal" title="Place a goal zone">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3.5" y="6" width="17" height="12" rx="2" stroke-dasharray="3 2.5" />
+            <path d="M8.5 12.2l2.4 2.4 4.6-4.8" />
+          </svg>
+          <span>Goal</span>
+        </button>
+      </nav>
+
+      <div id="actions">
+        <button id="play-btn" class="action-btn primary" title="Start the simulation">
+          <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5l12 7-12 7z" /></svg>
+          <svg class="icon-stop" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="6" y="6" width="12" height="12" rx="1.5" />
+          </svg>
+          <span id="play-label">Play</span>
+        </button>
+        <div class="divider"></div>
+        <button id="clear-btn" class="action-btn danger" title="Remove everything from the canvas">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12" /></svg>
+          <span class="label">Clear</span>
+        </button>
+        <button id="export-btn" class="action-btn" title="Download this scene as a JSON file">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14" /></svg>
+          <span class="label">Export</span>
+        </button>
+        <button id="import-btn" class="action-btn" title="Load a previously exported scene">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 19h14" /></svg>
+          <span class="label">Import</span>
+        </button>
         <input id="import-file" type="file" accept=".json,application/json" hidden />
-        <div class="toolbar-divider"></div>
-        <button id="help-btn" class="tool-btn" aria-expanded="false" aria-controls="help-panel" title="What does each button do?">
-          ? Help
+        <button
+          id="help-btn"
+          class="action-btn"
+          aria-expanded="false"
+          aria-controls="help-panel"
+          title="What does each button do?"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01" />
+          </svg>
+          <span class="label">Help</span>
         </button>
       </div>
+
       <div id="help-panel" hidden>
         <dl>
           <dt>Select</dt>
@@ -69,6 +119,7 @@
           <dd>Also in the bottom bar. The Delete key removes the selected object too.</dd>
         </dl>
       </div>
+
       <div id="props" hidden>
         <span id="props-title"></span>
         <label id="props-material-wrap">
@@ -79,6 +130,7 @@
         <button id="props-rotate-right" class="tool-btn" title="Rotate 15° clockwise">&#8635;</button>
         <button id="props-delete" class="tool-btn danger" title="Delete (Del)">Delete</button>
       </div>
+
       <div id="hint">
         Right-click an object to lock/unlock it &middot; select a ball and drag its blue handle to set spin
       </div>

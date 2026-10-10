@@ -44,7 +44,7 @@ const HANDLE_HIT_RADIUS = 14;
 const MAX_SPIN = 18;
 
 const canvas = document.getElementById('sim') as HTMLCanvasElement;
-const toolButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('.tool-btn[data-tool]'));
+const toolButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('.palette-btn[data-tool]'));
 const playBtn = document.getElementById('play-btn') as HTMLButtonElement;
 const clearBtn = document.getElementById('clear-btn') as HTMLButtonElement;
 const exportBtn = document.getElementById('export-btn') as HTMLButtonElement;
@@ -97,6 +97,12 @@ function setToolbarDisabled(disabled: boolean): void {
   clearBtn.disabled = disabled;
   exportBtn.disabled = disabled;
   importBtn.disabled = disabled;
+}
+
+function setPlayingUi(playing: boolean): void {
+  playBtn.classList.toggle('playing', playing);
+  playBtn.title = playing ? 'Stop and restore the layout' : 'Start the simulation';
+  document.getElementById('play-label')!.textContent = playing ? 'Stop' : 'Play';
 }
 
 function selectTool(t: Tool): void {
@@ -249,14 +255,14 @@ playBtn.addEventListener('click', () => {
     resetGoals(objects);
     Runner.run(runner, engine);
     isPlaying = true;
-    playBtn.textContent = 'Stop';
+    setPlayingUi(true);
     setToolbarDisabled(true);
   } else {
     Runner.stop(runner);
     objects.forEach(restoreSnapshot);
     resetGoals(objects);
     isPlaying = false;
-    playBtn.textContent = 'Play';
+    setPlayingUi(false);
     setToolbarDisabled(false);
   }
 });
@@ -269,8 +275,8 @@ let helpOpen = false;
 function setHelpOpen(open: boolean): void {
   helpOpen = open;
   if (open) {
-    const toolbarBottom = document.getElementById('toolbar')!.getBoundingClientRect().bottom;
-    helpPanel.style.top = `${toolbarBottom + 8}px`;
+    const actionsBottom = document.getElementById('actions')!.getBoundingClientRect().bottom;
+    helpPanel.style.top = `${actionsBottom + 8}px`;
   }
   helpPanel.hidden = !open;
   helpBtn.setAttribute('aria-expanded', String(open));

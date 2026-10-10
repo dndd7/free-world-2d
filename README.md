@@ -6,6 +6,9 @@ give the ball a spin, and hit Play to watch real rigid-body physics take over.
 
 ## Controls
 
+Tools live in the palette on the left; **Play/Stop**, Clear, Export, Import and
+Help are in the panel at the top right. On narrow screens both collapse to icons.
+
 | Tool | What it does |
 | --- | --- |
 | **Select** | Click an object to select it; drag to move it |

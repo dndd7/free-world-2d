@@ -1,3 +1,13 @@
+:root {
+  --panel-bg: rgba(30, 30, 36, 0.92);
+  --panel-border: 1px solid rgba(255, 255, 255, 0.08);
+  --btn-bg: #2a2a32;
+  --btn-border: 1px solid rgba(255, 255, 255, 0.12);
+  --accent: #5ad1e6;
+  --go: #3fae5c;
+  --danger: #e35d5d;
+}
+
 html,
 body {
   margin: 0;
@@ -6,6 +16,7 @@ body {
   height: 100%;
   overflow: hidden;
   background: #1a1a1f;
+  font-family: system-ui, sans-serif;
 }
 
 #app {
@@ -19,95 +30,189 @@ body {
   height: 100%;
 }
 
-#toolbar {
+button {
+  font-family: inherit;
+}
+
+/* Tool palette (left) */
+
+#palette {
   position: fixed;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: center;
-  max-width: calc(100vw - 24px);
+  flex-direction: column;
+  gap: 4px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
   box-sizing: border-box;
-  gap: 6px;
-  padding: 8px;
-  background: rgba(30, 30, 36, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
+  padding: 6px;
+  background: var(--panel-bg);
+  border: var(--panel-border);
+  border-radius: 12px;
   backdrop-filter: blur(6px);
-  font-family: system-ui, sans-serif;
 }
 
-.tool-btn {
+.palette-btn {
   appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: #2a2a32;
-  color: #ddd;
-  padding: 8px 11px;
-  white-space: nowrap;
-  border-radius: 6px;
-  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 58px;
+  padding: 8px 4px 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #c9c9d1;
+  font-size: 11px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 
-.tool-btn:hover:not(:disabled) {
-  background: #35353f;
+.palette-btn svg,
+.action-btn svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.tool-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.palette-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
 }
 
-.tool-btn.active {
-  background: #5ad1e6;
-  border-color: #5ad1e6;
+.palette-btn.active {
+  background: var(--accent);
   color: #10151a;
   font-weight: 600;
 }
 
-.tool-btn.accent {
-  background: #3fae5c;
-  border-color: #3fae5c;
-  color: #0d1a10;
-  font-weight: 600;
+.palette-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
-.tool-btn.accent:hover:not(:disabled) {
-  background: #4cc46c;
+/* Actions (top right) */
+
+#actions {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  padding: 6px;
+  background: var(--panel-bg);
+  border: var(--panel-border);
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
 }
 
-.tool-btn.danger {
+.action-btn {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
   background: transparent;
-  border-color: #e35d5d;
-  color: #e35d5d;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #c9c9d1;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
 }
 
-.tool-btn.danger:hover:not(:disabled) {
-  background: rgba(227, 93, 93, 0.12);
+.action-btn:hover:not(:disabled),
+.action-btn.active {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
 }
 
-.toolbar-divider {
+.action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.action-btn.danger {
+  color: var(--danger);
+}
+
+.action-btn.danger:hover:not(:disabled) {
+  background: rgba(227, 93, 93, 0.14);
+  color: var(--danger);
+}
+
+.action-btn.primary {
+  padding: 8px 16px;
+  background: var(--go);
+  color: #0d1a10;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.action-btn.primary:hover:not(:disabled) {
+  background: #4cc46c;
+  color: #0d1a10;
+}
+
+.action-btn.primary.playing {
+  background: var(--danger);
+  color: #fff;
+}
+
+.action-btn.primary.playing:hover:not(:disabled) {
+  background: #ef7373;
+  color: #fff;
+}
+
+.action-btn.primary .icon-play {
+  fill: currentColor;
+}
+
+.action-btn.primary .icon-stop {
+  display: none;
+  fill: currentColor;
+}
+
+.action-btn.primary.playing .icon-play {
+  display: none;
+}
+
+.action-btn.primary.playing .icon-stop {
+  display: block;
+}
+
+.divider {
   width: 1px;
-  height: 22px;
+  height: 24px;
+  margin: 0 4px;
   background: rgba(255, 255, 255, 0.12);
 }
 
+/* Help panel (drops down from the actions panel) */
+
 #help-panel {
   position: fixed;
-  top: 76px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 72px;
+  right: 12px;
   width: min(420px, calc(100vw - 24px));
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
   box-sizing: border-box;
   padding: 12px 16px;
   background: rgba(30, 30, 36, 0.96);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
+  border-radius: 12px;
   backdrop-filter: blur(6px);
-  font-family: system-ui, sans-serif;
   font-size: 13px;
   color: #ddd;
 }
@@ -125,12 +230,41 @@ body {
 
 #help-panel dt {
   font-weight: 600;
-  color: #5ad1e6;
+  color: var(--accent);
 }
 
 #help-panel dd {
   margin: 0;
   color: rgba(255, 255, 255, 0.75);
+}
+
+/* Selected-object bar (bottom) */
+
+.tool-btn {
+  appearance: none;
+  border: var(--btn-border);
+  background: var(--btn-bg);
+  color: #ddd;
+  padding: 8px 11px;
+  white-space: nowrap;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.tool-btn:hover:not(:disabled) {
+  background: #35353f;
+}
+
+.tool-btn.danger {
+  background: transparent;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.tool-btn.danger:hover:not(:disabled) {
+  background: rgba(227, 93, 93, 0.12);
 }
 
 #props {
@@ -146,11 +280,10 @@ body {
   max-width: calc(100vw - 24px);
   box-sizing: border-box;
   padding: 8px 12px;
-  background: rgba(30, 30, 36, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
+  background: var(--panel-bg);
+  border: var(--panel-border);
+  border-radius: 12px;
   backdrop-filter: blur(6px);
-  font-family: system-ui, sans-serif;
   font-size: 13px;
   color: #ddd;
 }
@@ -162,7 +295,7 @@ body {
 
 #props-title {
   font-weight: 600;
-  color: #5ad1e6;
+  color: var(--accent);
 }
 
 #props label {
@@ -172,9 +305,9 @@ body {
 }
 
 #props select {
-  background: #2a2a32;
+  background: var(--btn-bg);
   color: #ddd;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: var(--btn-border);
   border-radius: 6px;
   padding: 6px 8px;
   font-size: 13px;
@@ -185,8 +318,27 @@ body {
   bottom: 14px;
   left: 50%;
   transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  text-align: center;
   color: rgba(255, 255, 255, 0.55);
-  font-family: system-ui, sans-serif;
   font-size: 12px;
   pointer-events: none;
+}
+
+/* Narrow windows: icon-only buttons so the panels stay small */
+
+@media (max-width: 820px) {
+  .action-btn .label {
+    display: none;
+  }
+
+  .palette-btn {
+    width: 44px;
+    padding: 9px 4px;
+  }
+
+  .palette-btn span {
+    display: none;
+  }
 }
