@@ -68,14 +68,7 @@ export function createTrack(points: Point[]): SceneObject | null {
     const dy = b.y - a.y;
     const length = Math.hypot(dx, dy);
     if (length < 2) continue;
-    const angle = Math.atan2(dy, dx);
-    bodies.push(
-      Bodies.rectangle((a.x + b.x) / 2, (a.y + b.y) / 2, length, TRACK_THICKNESS, {
-        angle,
-        friction: 0.3,
-        render: { fillStyle: '#8a6d3b', strokeStyle: '#c9a86a', lineWidth: 1 },
-      }),
-    );
+    bodies.push(createTrackSegment((a.x + b.x) / 2, (a.y + b.y) / 2, length, Math.atan2(dy, dx)));
   }
   if (bodies.length === 0) return null;
 
@@ -88,6 +81,114 @@ export function createTrack(points: Point[]): SceneObject | null {
     handleAngle: 0,
     snapshot: [],
   };
+}
+
+function createTrackSegment(x: number, y: number, length: number, angle: number): Body {
+  return Bodies.rectangle(x, y, length, TRACK_THICKNESS, {
+    angle,
+    friction: 0.3,
+    render: { fillStyle: '#8a6d3b', strokeStyle: '#c9a86a', lineWidth: 1 },
+  });
+}
+
+export interface SerializedBody {
+  x: number;
+  y: number;
+  angle: number;
+  length?: number;
+}
+
+export interface SerializedObject {
+  type: ObjectType;
+  locked: boolean;
+  spin: number;
+  handleAngle: number;
+  bodies: SerializedBody[];
+}
+
+export interface SceneFile {
+  app: 'free-world-2d';
+  version: 1;
+  objects: SerializedObject[];
+}
+
+export function serializeScene(objects: SceneObject[]): SceneFile {
+  return {
+    app: 'free-world-2d',
+    version: 1,
+    objects: objects.map((obj) => ({
+      type: obj.type,
+      locked: obj.locked,
+      spin: obj.spin,
+      handleAngle: obj.handleAngle,
+      bodies: obj.bodies.map((b) => ({
+        x: b.position.x,
+        y: b.position.y,
+        angle: b.angle,
+        ...(obj.type === 'track'
+          ? {
+              length: Math.hypot(
+                b.vertices[1].x - b.vertices[0].x,
+                b.vertices[1].y - b.vertices[0].y,
+              ),
+            }
+          : {}),
+      })),
+    })),
+  };
+}
+
+const OBJECT_TYPES: ObjectType[] = ['ball', 'box', 'track'];
+
+function isFiniteNumber(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v);
+}
+
+export function deserializeScene(data: unknown): SceneObject[] {
+  const file = data as Partial<SceneFile> | null;
+  if (!file || file.app !== 'free-world-2d' || file.version !== 1 || !Array.isArray(file.objects)) {
+    throw new Error('Not a Free World 2D scene file.');
+  }
+
+  return file.objects.map((raw, i) => {
+    const label = `Object ${i + 1}`;
+    if (!raw || !OBJECT_TYPES.includes(raw.type) || !Array.isArray(raw.bodies) || raw.bodies.length === 0) {
+      throw new Error(`${label} is malformed.`);
+    }
+    if (raw.type !== 'track' && raw.bodies.length !== 1) {
+      throw new Error(`${label} should have exactly one body.`);
+    }
+    for (const b of raw.bodies) {
+      if (!b || !isFiniteNumber(b.x) || !isFiniteNumber(b.y) || !isFiniteNumber(b.angle)) {
+        throw new Error(`${label} has an invalid body.`);
+      }
+      if (raw.type === 'track' && (!isFiniteNumber(b.length) || b.length <= 0)) {
+        throw new Error(`${label} has an invalid track segment.`);
+      }
+    }
+
+    let obj: SceneObject;
+    if (raw.type === 'ball') {
+      obj = createBall(raw.bodies[0].x, raw.bodies[0].y);
+    } else if (raw.type === 'box') {
+      obj = createBox(raw.bodies[0].x, raw.bodies[0].y);
+    } else {
+      obj = {
+        id: `obj-${nextId++}`,
+        type: 'track',
+        bodies: raw.bodies.map((b) => createTrackSegment(b.x, b.y, b.length as number, b.angle)),
+        locked: false,
+        spin: 0,
+        handleAngle: 0,
+        snapshot: [],
+      };
+    }
+    obj.bodies.forEach((body, j) => Body.setAngle(body, raw.bodies[j].angle));
+    obj.spin = isFiniteNumber(raw.spin) ? raw.spin : 0;
+    obj.handleAngle = isFiniteNumber(raw.handleAngle) ? raw.handleAngle : obj.handleAngle;
+    setLocked(obj, raw.locked === true);
+    return obj;
+  });
 }
 
 function simplifyPoints(points: Point[], minDist: number): Point[] {

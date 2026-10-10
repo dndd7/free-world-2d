@@ -5,8 +5,10 @@ import {
   createBall,
   createBox,
   createTrack,
+  deserializeScene,
   findObjectAtPoint,
   restoreSnapshot,
+  serializeScene,
   setLocked,
   translateObject,
   unionBounds,
@@ -25,6 +27,9 @@ const canvas = document.getElementById('sim') as HTMLCanvasElement;
 const toolButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('.tool-btn[data-tool]'));
 const playBtn = document.getElementById('play-btn') as HTMLButtonElement;
 const clearBtn = document.getElementById('clear-btn') as HTMLButtonElement;
+const exportBtn = document.getElementById('export-btn') as HTMLButtonElement;
+const importBtn = document.getElementById('import-btn') as HTMLButtonElement;
+const importFile = document.getElementById('import-file') as HTMLInputElement;
 
 const engine = Engine.create();
 const world = engine.world;
@@ -66,6 +71,8 @@ function setActiveToolButton(t: Tool): void {
 function setToolbarDisabled(disabled: boolean): void {
   toolButtons.forEach((b) => (b.disabled = disabled));
   clearBtn.disabled = disabled;
+  exportBtn.disabled = disabled;
+  importBtn.disabled = disabled;
 }
 
 function selectTool(t: Tool): void {
@@ -214,11 +221,48 @@ playBtn.addEventListener('click', () => {
   }
 });
 
-clearBtn.addEventListener('click', () => {
-  if (isPlaying) return;
+function clearScene(): void {
   objects.forEach((obj) => Composite.remove(world, obj.bodies));
   objects.length = 0;
   selected = null;
+}
+
+clearBtn.addEventListener('click', () => {
+  if (isPlaying) return;
+  clearScene();
+});
+
+exportBtn.addEventListener('click', () => {
+  if (isPlaying) return;
+  if (objects.length === 0) {
+    alert('Nothing to export yet — draw or place something first.');
+    return;
+  }
+  const json = JSON.stringify(serializeScene(objects), null, 2);
+  const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'free-world-2d-scene.json';
+  link.click();
+  URL.revokeObjectURL(url);
+});
+
+importBtn.addEventListener('click', () => {
+  if (isPlaying) return;
+  importFile.click();
+});
+
+importFile.addEventListener('change', async () => {
+  const file = importFile.files?.[0];
+  importFile.value = '';
+  if (!file || isPlaying) return;
+  try {
+    const imported = deserializeScene(JSON.parse(await file.text()));
+    clearScene();
+    imported.forEach(addObject);
+  } catch (err) {
+    alert(`Couldn't import that file: ${err instanceof Error ? err.message : 'invalid file'}`);
+  }
 });
 
 Events.on(render, 'afterRender', () => {

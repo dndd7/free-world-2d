@@ -16,6 +16,8 @@ give the ball a spin, and hit Play to watch real rigid-body physics take over.
 | Drag a selected ball's blue handle | Set its initial spin direction/speed |
 | **Play / Stop** | Play captures the current layout, applies each ball's spin, and runs the simulation; Stop restores everything back to how you left it |
 | **Clear** | Remove everything from the canvas |
+| **Export** | Download the current scene as `free-world-2d-scene.json` (shapes, positions, locks, ball spin) |
+| **Import** | Load a previously exported scene file, replacing whatever is on the canvas |
 
 Everything is paused (no gravity/motion) while editing — objects only start
 moving once you press Play.
