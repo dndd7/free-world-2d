@@ -133,6 +133,53 @@ body {
   color: rgba(255, 255, 255, 0.75);
 }
 
+#props {
+  position: fixed;
+  bottom: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
+  padding: 8px 12px;
+  background: rgba(30, 30, 36, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  backdrop-filter: blur(6px);
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+  color: #ddd;
+}
+
+#props[hidden],
+#props [hidden] {
+  display: none;
+}
+
+#props-title {
+  font-weight: 600;
+  color: #5ad1e6;
+}
+
+#props label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#props select {
+  background: #2a2a32;
+  color: #ddd;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
 #hint {
   position: fixed;
   bottom: 14px;

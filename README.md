@@ -10,8 +10,12 @@ give the ball a spin, and hit Play to watch real rigid-body physics take over.
 | --- | --- |
 | **Select** | Click an object to select it; drag to move it |
 | **Draw** | Click-drag to freehand a track/line — becomes a chain of thin rigid segments (open path, not filled) |
+| **Plank** | Click-drag to lay down a straight plank — quick ramps, shelves and walls |
 | **Ball** | Click the canvas to place a ball |
 | **Box** | Click the canvas to place a box |
+| **Triangle** | Click the canvas to place a right-angled wedge (rotate it from the bottom bar) |
+| **Goal** | Click the canvas to place a goal zone; it lights up when anything free-moving (not locked) touches it during Play, and resets on Stop |
+| **Bottom bar** | Appears when an object is selected: pick its **Surface**, rotate it in 15° steps, or delete it (the Delete key works too) |
 | **Right-click** | Toggle lock on the object under the cursor (locked objects show a padlock while editing and stay fixed during simulation) |
 | **? Help** | Opens a panel describing what each button does |
 | Drag a selected ball's blue handle | Set its initial spin direction/speed |
@@ -22,6 +26,20 @@ give the ball a spin, and hit Play to watch real rigid-body physics take over.
 
 Everything is paused (no gravity/motion) while editing — objects only start
 moving once you press Play.
+
+### Surfaces
+
+Every object except a goal zone has a surface material, set from the bottom bar:
+
+| Surface | Effect |
+| --- | --- |
+| Normal | Default friction and bounce for that shape |
+| Ice | Frictionless — anything touching it slides |
+| Rubber | Very bouncy |
+| Sticky | Grips hard, braking sliding things quickly |
+
+A material works whether the object is locked or free, and applies to contacts
+with any other object (Ice beats Sticky; the bouncier surface of a pair always wins).
 
 ## Development
 

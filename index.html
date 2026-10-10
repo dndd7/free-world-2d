@@ -16,8 +16,13 @@
           Select
         </button>
         <button id="tool-draw" class="tool-btn" data-tool="draw" title="Draw a track or line">Draw</button>
+        <button id="tool-plank" class="tool-btn" data-tool="plank" title="Drag out a straight plank">Plank</button>
         <button id="tool-ball" class="tool-btn" data-tool="ball" title="Place a ball">Ball</button>
         <button id="tool-box" class="tool-btn" data-tool="box" title="Place a box">Box</button>
+        <button id="tool-triangle" class="tool-btn" data-tool="triangle" title="Place a triangle wedge">
+          Triangle
+        </button>
+        <button id="tool-goal" class="tool-btn" data-tool="goal" title="Place a goal zone">Goal</button>
         <div class="toolbar-divider"></div>
         <button id="play-btn" class="tool-btn accent">Play</button>
         <button id="clear-btn" class="tool-btn danger">Clear</button>
@@ -36,10 +41,16 @@
           <dd>Click an object to select it, drag it to move it.</dd>
           <dt>Draw</dt>
           <dd>Click and drag to freehand a track, slide or wall.</dd>
+          <dt>Plank</dt>
+          <dd>Click and drag to lay down a straight plank, handy for quick ramps and shelves.</dd>
           <dt>Ball</dt>
           <dd>Click the canvas to place a ball.</dd>
           <dt>Box</dt>
           <dd>Click the canvas to place a box.</dd>
+          <dt>Triangle</dt>
+          <dd>Click the canvas to place a wedge. Use the rotate buttons to turn it.</dd>
+          <dt>Goal</dt>
+          <dd>Click the canvas to place a goal zone. It lights up when something free-moving touches it during Play.</dd>
           <dt>Play / Stop</dt>
           <dd>Play starts gravity and physics. Stop puts everything back where you left it.</dd>
           <dt>Clear</dt>
@@ -52,7 +63,21 @@
           <dd>Lock or unlock an object. Locked objects (padlock) stay fixed during Play.</dd>
           <dt>Blue handle</dt>
           <dd>On a selected ball, drag it around the ball to set its initial spin.</dd>
+          <dt>Surface</dt>
+          <dd>With an object selected, pick Ice (slippery), Rubber (bouncy) or Sticky (grippy) from the bar at the bottom.</dd>
+          <dt>Rotate / Delete</dt>
+          <dd>Also in the bottom bar. The Delete key removes the selected object too.</dd>
         </dl>
+      </div>
+      <div id="props" hidden>
+        <span id="props-title"></span>
+        <label id="props-material-wrap">
+          Surface
+          <select id="props-material"></select>
+        </label>
+        <button id="props-rotate-left" class="tool-btn" title="Rotate 15° counter-clockwise">&#8634;</button>
+        <button id="props-rotate-right" class="tool-btn" title="Rotate 15° clockwise">&#8635;</button>
+        <button id="props-delete" class="tool-btn danger" title="Delete (Del)">Delete</button>
       </div>
       <div id="hint">
         Right-click an object to lock/unlock it &middot; select a ball and drag its blue handle to set spin

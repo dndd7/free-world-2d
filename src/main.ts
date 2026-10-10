@@ -1,23 +1,43 @@
 import { Composite, Engine, Events, Render, Runner } from 'matter-js';
 import {
+  MATERIAL_OPTIONS,
+  OBJECT_LABELS,
   applyInitialSpin,
+  applyMaterial,
   captureSnapshot,
   createBall,
   createBox,
+  createGoal,
+  createPlank,
   createTrack,
+  createTriangle,
   deserializeScene,
   findObjectAtPoint,
+  installSurfaceRules,
+  resetGoals,
   restoreSnapshot,
+  rotateObject,
   serializeScene,
+  setGoalReached,
   setLocked,
   translateObject,
   unionBounds,
+  type Material,
   type Point,
   type SceneObject,
 } from './scene';
 import './style.css';
 
-type Tool = 'select' | 'draw' | 'ball' | 'box';
+type Tool = 'select' | 'draw' | 'plank' | 'ball' | 'box' | 'triangle' | 'goal';
+
+const PLACERS: Partial<Record<Tool, (x: number, y: number) => SceneObject>> = {
+  ball: createBall,
+  box: createBox,
+  triangle: createTriangle,
+  goal: createGoal,
+};
+
+const ROTATE_STEP = (15 * Math.PI) / 180;
 
 const HANDLE_RADIUS_PAD = 14;
 const HANDLE_HIT_RADIUS = 14;
@@ -30,6 +50,8 @@ const clearBtn = document.getElementById('clear-btn') as HTMLButtonElement;
 const exportBtn = document.getElementById('export-btn') as HTMLButtonElement;
 const importBtn = document.getElementById('import-btn') as HTMLButtonElement;
 const importFile = document.getElementById('import-file') as HTMLInputElement;
+
+installSurfaceRules();
 
 const engine = Engine.create();
 const world = engine.world;
@@ -58,6 +80,8 @@ let spinLastTime = 0;
 
 let isDrawingStroke = false;
 let drawPoints: Point[] = [];
+let plankStart: Point | null = null;
+let plankEnd: Point | null = null;
 
 function getCanvasPoint(e: MouseEvent): Point {
   const rect = canvas.getBoundingClientRect();
@@ -138,16 +162,15 @@ canvas.addEventListener('mousedown', (e) => {
     return;
   }
 
-  if (tool === 'ball') {
-    const obj = createBall(p.x, p.y);
-    addObject(obj);
-    selected = obj;
-    selectTool('select');
+  if (tool === 'plank') {
+    plankStart = p;
+    plankEnd = p;
     return;
   }
 
-  if (tool === 'box') {
-    const obj = createBox(p.x, p.y);
+  const place = PLACERS[tool];
+  if (place) {
+    const obj = place(p.x, p.y);
     addObject(obj);
     selected = obj;
     selectTool('select');
@@ -177,6 +200,11 @@ window.addEventListener('mousemove', (e) => {
     return;
   }
 
+  if (plankStart) {
+    plankEnd = p;
+    return;
+  }
+
   if (spinDragging) {
     updateSpin(spinDragging, p);
     return;
@@ -200,6 +228,16 @@ window.addEventListener('mouseup', () => {
     }
     selectTool('select');
   }
+  if (plankStart && plankEnd) {
+    const obj = createPlank(plankStart, plankEnd);
+    plankStart = null;
+    plankEnd = null;
+    if (obj) {
+      addObject(obj);
+      selected = obj;
+    }
+    selectTool('select');
+  }
   dragging = null;
   spinDragging = null;
 });
@@ -208,6 +246,7 @@ playBtn.addEventListener('click', () => {
   if (!isPlaying) {
     objects.forEach(captureSnapshot);
     objects.forEach(applyInitialSpin);
+    resetGoals(objects);
     Runner.run(runner, engine);
     isPlaying = true;
     playBtn.textContent = 'Stop';
@@ -215,6 +254,7 @@ playBtn.addEventListener('click', () => {
   } else {
     Runner.stop(runner);
     objects.forEach(restoreSnapshot);
+    resetGoals(objects);
     isPlaying = false;
     playBtn.textContent = 'Play';
     setToolbarDisabled(false);
@@ -242,6 +282,72 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') setHelpOpen(false);
 });
 canvas.addEventListener('mousedown', () => setHelpOpen(false));
+
+// A goal zone is reached when anything free-moving (not locked) touches it.
+Events.on(engine, 'collisionStart', (e) => {
+  for (const pair of e.pairs) {
+    for (const [zone, other] of [
+      [pair.bodyA, pair.bodyB],
+      [pair.bodyB, pair.bodyA],
+    ]) {
+      if (zone.label !== 'goal' || other.label === 'goal' || other.isStatic) continue;
+      const goal = objects.find((o) => o.type === 'goal' && o.bodies[0] === zone);
+      if (goal) setGoalReached(goal, true);
+    }
+  }
+});
+
+const propsPanel = document.getElementById('props') as HTMLDivElement;
+const propsTitle = document.getElementById('props-title') as HTMLSpanElement;
+const propsMaterialWrap = document.getElementById('props-material-wrap') as HTMLLabelElement;
+const propsMaterial = document.getElementById('props-material') as HTMLSelectElement;
+const propsRotateLeft = document.getElementById('props-rotate-left') as HTMLButtonElement;
+const propsRotateRight = document.getElementById('props-rotate-right') as HTMLButtonElement;
+const propsDelete = document.getElementById('props-delete') as HTMLButtonElement;
+
+for (const opt of MATERIAL_OPTIONS) {
+  propsMaterial.add(new Option(opt.label, opt.value));
+}
+
+let propsKey = '';
+
+function syncPropsPanel(): void {
+  const key = selected && !isPlaying ? `${selected.id}|${selected.material}` : '';
+  if (key === propsKey) return;
+  propsKey = key;
+
+  propsPanel.hidden = key === '';
+  if (!selected || key === '') return;
+
+  propsTitle.textContent = OBJECT_LABELS[selected.type];
+  propsMaterialWrap.hidden = selected.type === 'goal';
+  propsMaterial.value = selected.material;
+  propsRotateLeft.hidden = propsRotateRight.hidden = selected.type === 'ball';
+}
+
+propsMaterial.addEventListener('change', () => {
+  if (selected && !isPlaying) applyMaterial(selected, propsMaterial.value as Material);
+});
+propsRotateLeft.addEventListener('click', () => {
+  if (selected && !isPlaying) rotateObject(selected, -ROTATE_STEP);
+});
+propsRotateRight.addEventListener('click', () => {
+  if (selected && !isPlaying) rotateObject(selected, ROTATE_STEP);
+});
+
+function deleteSelected(): void {
+  if (!selected || isPlaying) return;
+  Composite.remove(world, selected.bodies);
+  objects.splice(objects.indexOf(selected), 1);
+  selected = null;
+}
+
+propsDelete.addEventListener('click', deleteSelected);
+window.addEventListener('keydown', (e) => {
+  if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+  if (e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) return;
+  deleteSelected();
+});
 
 function clearScene(): void {
   objects.forEach((obj) => Composite.remove(world, obj.bodies));
@@ -307,7 +413,19 @@ function drawPadlock(ctx: CanvasRenderingContext2D, x: number, y: number): void 
   ctx.restore();
 }
 
+function drawGoalLabel(ctx: CanvasRenderingContext2D, goal: SceneObject): void {
+  const { x, y } = goal.bodies[0].position;
+  ctx.save();
+  ctx.font = '600 14px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = goal.reached ? '#eafff0' : '#7fdc97';
+  ctx.fillText(goal.reached ? 'GOAL REACHED!' : 'GOAL', x, y);
+  ctx.restore();
+}
+
 Events.on(render, 'afterRender', () => {
+  syncPropsPanel();
   const ctx = render.context;
   ctx.save();
 
@@ -320,8 +438,21 @@ Events.on(render, 'afterRender', () => {
     ctx.stroke();
   }
 
+  if (plankStart && plankEnd) {
+    ctx.strokeStyle = '#d9b97f';
+    ctx.lineWidth = 14;
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(plankStart.x, plankStart.y);
+    ctx.lineTo(plankEnd.x, plankEnd.y);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
   for (const obj of objects) {
     const bounds = unionBounds(obj);
+    if (obj.type === 'goal') drawGoalLabel(ctx, obj);
     if (obj.locked && !isPlaying) {
       const anchor = obj.bodies[Math.floor(obj.bodies.length / 2)].position;
       drawPadlock(ctx, anchor.x, anchor.y);
