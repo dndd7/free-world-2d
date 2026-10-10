@@ -269,7 +269,7 @@ button {
 
 #props {
   position: fixed;
-  bottom: 52px;
+  bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -311,19 +311,6 @@ button {
   border-radius: 6px;
   padding: 6px 8px;
   font-size: 13px;
-}
-
-#hint {
-  position: fixed;
-  bottom: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: max-content;
-  max-width: calc(100vw - 24px);
-  text-align: center;
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 12px;
-  pointer-events: none;
 }
 
 /* Narrow windows: icon-only buttons so the panels stay small */
