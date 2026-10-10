@@ -221,6 +221,28 @@ playBtn.addEventListener('click', () => {
   }
 });
 
+const helpBtn = document.getElementById('help-btn') as HTMLButtonElement;
+const helpPanel = document.getElementById('help-panel') as HTMLDivElement;
+
+let helpOpen = false;
+
+function setHelpOpen(open: boolean): void {
+  helpOpen = open;
+  if (open) {
+    const toolbarBottom = document.getElementById('toolbar')!.getBoundingClientRect().bottom;
+    helpPanel.style.top = `${toolbarBottom + 8}px`;
+  }
+  helpPanel.hidden = !open;
+  helpBtn.setAttribute('aria-expanded', String(open));
+  helpBtn.classList.toggle('active', open);
+}
+
+helpBtn.addEventListener('click', () => setHelpOpen(!helpOpen));
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') setHelpOpen(false);
+});
+canvas.addEventListener('mousedown', () => setHelpOpen(false));
+
 function clearScene(): void {
   objects.forEach((obj) => Composite.remove(world, obj.bodies));
   objects.length = 0;
@@ -300,7 +322,7 @@ Events.on(render, 'afterRender', () => {
 
   for (const obj of objects) {
     const bounds = unionBounds(obj);
-    if (obj.locked) {
+    if (obj.locked && !isPlaying) {
       const anchor = obj.bodies[Math.floor(obj.bodies.length / 2)].position;
       drawPadlock(ctx, anchor.x, anchor.y);
     }

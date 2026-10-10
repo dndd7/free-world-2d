@@ -12,7 +12,8 @@ give the ball a spin, and hit Play to watch real rigid-body physics take over.
 | **Draw** | Click-drag to freehand a track/line — becomes a chain of thin rigid segments (open path, not filled) |
 | **Ball** | Click the canvas to place a ball |
 | **Box** | Click the canvas to place a box |
-| **Right-click** | Toggle lock on the object under the cursor (locked = fixed in place during simulation) |
+| **Right-click** | Toggle lock on the object under the cursor (locked objects show a padlock while editing and stay fixed during simulation) |
+| **? Help** | Opens a panel describing what each button does |
 | Drag a selected ball's blue handle | Set its initial spin direction/speed |
 | **Play / Stop** | Play captures the current layout, applies each ball's spin, and runs the simulation; Stop restores everything back to how you left it |
 | **Clear** | Remove everything from the canvas |

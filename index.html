@@ -25,6 +25,34 @@
         <button id="export-btn" class="tool-btn" title="Download this scene as a JSON file">Export</button>
         <button id="import-btn" class="tool-btn" title="Load a previously exported scene">Import</button>
         <input id="import-file" type="file" accept=".json,application/json" hidden />
+        <div class="toolbar-divider"></div>
+        <button id="help-btn" class="tool-btn" aria-expanded="false" aria-controls="help-panel" title="What does each button do?">
+          ? Help
+        </button>
+      </div>
+      <div id="help-panel" hidden>
+        <dl>
+          <dt>Select</dt>
+          <dd>Click an object to select it, drag it to move it.</dd>
+          <dt>Draw</dt>
+          <dd>Click and drag to freehand a track, slide or wall.</dd>
+          <dt>Ball</dt>
+          <dd>Click the canvas to place a ball.</dd>
+          <dt>Box</dt>
+          <dd>Click the canvas to place a box.</dd>
+          <dt>Play / Stop</dt>
+          <dd>Play starts gravity and physics. Stop puts everything back where you left it.</dd>
+          <dt>Clear</dt>
+          <dd>Remove everything from the canvas.</dd>
+          <dt>Export</dt>
+          <dd>Save the current scene to a file.</dd>
+          <dt>Import</dt>
+          <dd>Load a saved scene file, replacing the canvas.</dd>
+          <dt>Right-click</dt>
+          <dd>Lock or unlock an object. Locked objects (padlock) stay fixed during Play.</dd>
+          <dt>Blue handle</dt>
+          <dd>On a selected ball, drag it around the ball to set its initial spin.</dd>
+        </dl>
       </div>
       <div id="hint">
         Right-click an object to lock/unlock it &middot; select a ball and drag its blue handle to set spin
