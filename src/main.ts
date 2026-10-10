@@ -265,6 +265,26 @@ importFile.addEventListener('change', async () => {
   }
 });
 
+function drawPadlock(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  ctx.save();
+  ctx.translate(x, y);
+
+  ctx.fillStyle = 'rgba(16, 18, 24, 0.85)';
+  ctx.beginPath();
+  ctx.arc(0, 0, 12, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = '#f2f2f5';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(0, -2.5, 3.5, Math.PI, 0);
+  ctx.stroke();
+
+  ctx.fillStyle = '#f2f2f5';
+  ctx.fillRect(-5, -2, 10, 7.5);
+  ctx.restore();
+}
+
 Events.on(render, 'afterRender', () => {
   const ctx = render.context;
   ctx.save();
@@ -281,16 +301,8 @@ Events.on(render, 'afterRender', () => {
   for (const obj of objects) {
     const bounds = unionBounds(obj);
     if (obj.locked) {
-      ctx.strokeStyle = '#e35d5d';
-      ctx.setLineDash([6, 4]);
-      ctx.lineWidth = 2;
-      ctx.strokeRect(
-        bounds.min.x - 4,
-        bounds.min.y - 4,
-        bounds.max.x - bounds.min.x + 8,
-        bounds.max.y - bounds.min.y + 8,
-      );
-      ctx.setLineDash([]);
+      const anchor = obj.bodies[Math.floor(obj.bodies.length / 2)].position;
+      drawPadlock(ctx, anchor.x, anchor.y);
     }
     if (obj === selected) {
       ctx.strokeStyle = '#5ad1e6';
