@@ -77,6 +77,9 @@ first, so a failing test blocks the deploy); enable Pages for the repo
 - **Dependency updates** — Dependabot opens weekly pull requests for npm packages and
   GitHub Actions (`.github/dependabot.yml`), and GitHub's secret scanning and push
   protection are enabled for the repo.
+- **Pinned actions** — every GitHub Action in the workflows is pinned to an exact
+  commit (with its version in a comment), so a moved or compromised tag can't change
+  what runs. Dependabot keeps the pins current through its weekly pull requests.
 - The app is fully client-side: it makes no network requests and keeps its data in
   the browser. Imported scene files are validated before use.
 
