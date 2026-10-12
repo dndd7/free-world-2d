@@ -6,8 +6,9 @@ give the ball a spin, and hit Play to watch real rigid-body physics take over.
 
 ## Controls
 
-Tools live in the palette on the left; **Play/Stop**, Clear, Export, Import and
-Help are in the panel at the top right. On narrow screens both collapse to icons.
+Tools live in the palette on the left; **Play/Stop**, Undo/Redo, Clear, Export,
+Import, Grid and Help are in the panel at the top right. On narrow screens both
+collapse to icons. Mouse, touch and pen all work.
 
 | Tool | What it does |
 | --- | --- |
@@ -18,8 +19,9 @@ Help are in the panel at the top right. On narrow screens both collapse to icons
 | **Box** | Click the canvas to place a box |
 | **Triangle** | Click the canvas to place a right-angled wedge (rotate it from the bottom bar) |
 | **Goal** | Click the canvas to place a goal zone; it lights up when anything free-moving (not locked) touches it during Play, and resets on Stop |
-| **Bottom bar** | Appears when an object is selected: pick its **Surface**, rotate it in 15° steps, or delete it (the Delete key works too) |
-| **Right-click** | Toggle lock on the object under the cursor (locked objects show a padlock while editing and stay fixed during simulation) |
+| **Bottom bar** | Appears when an object is selected: pick its **Surface**, **Lock**/Unlock it, rotate it in 15° steps, or delete it (the Delete key works too) |
+| **Right-click** | Toggle lock on the object under the cursor (locked objects show a padlock while editing and stay fixed during simulation). On a touch screen use the Lock button in the bottom bar |
+| **Undo / Redo** | Step back and forward through your edits (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z; Cmd on a Mac). History lasts for the current visit |
 | **Grid** | Show or hide a background grid (40px squares, brighter every 200px) as a guide for lining things up; the setting is remembered |
 | **? Help** | Opens a panel describing what each button does |
 | Drag a selected ball's blue handle | Set its initial spin direction/speed |
@@ -30,6 +32,13 @@ Help are in the panel at the top right. On narrow screens both collapse to icons
 
 Everything is paused (no gravity/motion) while editing — objects only start
 moving once you press Play.
+
+### Autosave
+
+Your scene is saved in the browser after every change and restored when you reopen
+the page. It is stored per browser and per device (`localStorage`), so clearing site
+data removes it and another device starts empty — use **Export**/**Import** to keep a
+copy or move a scene. Nothing is sent to a server.
 
 ### Surfaces
 
@@ -51,12 +60,14 @@ with any other object (Ice beats Sticky; the bouncier surface of a pair always w
 npm install
 npm run dev      # start the dev server
 npm run build    # type-check and produce a production build in dist/
+npm test         # run the unit tests (scene model, physics rules, undo history, storage)
 ```
 
 This is a static site — `npm run build` output can be hosted anywhere. A
 GitHub Actions workflow (`.github/workflows/deploy.yml`) is included to
-auto-deploy `dist/` to GitHub Pages on every push to `master`; enable Pages
-for the repo (Settings → Pages → Source: GitHub Actions) to use it.
+auto-deploy `dist/` to GitHub Pages on every push to `master` (running the tests
+first, so a failing test blocks the deploy); enable Pages for the repo
+(Settings → Pages → Source: GitHub Actions) to use it.
 
 ## License
 

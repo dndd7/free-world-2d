@@ -1,4 +1,5 @@
 import { Composite, Engine, Events, Render, Runner } from 'matter-js';
+import { SceneHistory } from './history';
 import {
   MATERIAL_OPTIONS,
   OBJECT_LABELS,
@@ -18,14 +19,15 @@ import {
   restoreSnapshot,
   rotateObject,
   serializeScene,
-  setGoalReached,
   setLocked,
   translateObject,
   unionBounds,
+  watchGoals,
   type Material,
   type Point,
   type SceneObject,
 } from './scene';
+import { loadSavedScene, saveScene } from './storage';
 import './style.css';
 
 type Tool = 'select' | 'draw' | 'plank' | 'ball' | 'box' | 'triangle' | 'goal';
@@ -41,15 +43,19 @@ const ROTATE_STEP = (15 * Math.PI) / 180;
 
 const HANDLE_RADIUS_PAD = 14;
 const HANDLE_HIT_RADIUS = 14;
-const MAX_SPIN = 18;
+const HANDLE_HIT_RADIUS_TOUCH = 26;
+const MAX_SPIN = 18; // radians per second
 
 const canvas = document.getElementById('sim') as HTMLCanvasElement;
 const toolButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('.palette-btn[data-tool]'));
 const playBtn = document.getElementById('play-btn') as HTMLButtonElement;
+const undoBtn = document.getElementById('undo-btn') as HTMLButtonElement;
+const redoBtn = document.getElementById('redo-btn') as HTMLButtonElement;
 const clearBtn = document.getElementById('clear-btn') as HTMLButtonElement;
 const exportBtn = document.getElementById('export-btn') as HTMLButtonElement;
 const importBtn = document.getElementById('import-btn') as HTMLButtonElement;
 const importFile = document.getElementById('import-file') as HTMLInputElement;
+const toastEl = document.getElementById('toast') as HTMLDivElement;
 
 installSurfaceRules();
 
@@ -63,6 +69,7 @@ const render = Render.create({
   options: {
     width: window.innerWidth,
     height: window.innerHeight,
+    pixelRatio: window.devicePixelRatio,
     wireframes: false,
     background: '#1a1a1f',
   },
@@ -73,6 +80,11 @@ let isPlaying = false;
 const objects: SceneObject[] = [];
 let selected: SceneObject | null = null;
 
+watchGoals(engine, () => objects);
+
+let activePointer: number | null = null;
+let lastPointerType = 'mouse';
+
 let dragging: { obj: SceneObject; lastX: number; lastY: number } | null = null;
 let spinDragging: SceneObject | null = null;
 let spinLastAngle = 0;
@@ -82,6 +94,78 @@ let isDrawingStroke = false;
 let drawPoints: Point[] = [];
 let plankStart: Point | null = null;
 let plankEnd: Point | null = null;
+
+function gestureActive(): boolean {
+  return Boolean(dragging || spinDragging || isDrawingStroke || plankStart);
+}
+
+// ---- Toast ----------------------------------------------------------------
+
+let toastTimer = 0;
+
+function toast(message: string, ms = 2800): void {
+  toastEl.textContent = message;
+  toastEl.hidden = false;
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => (toastEl.hidden = true), ms);
+}
+
+// ---- History + autosave ---------------------------------------------------
+
+let history = new SceneHistory('');
+let warnedAboutSaving = false;
+
+function sceneJson(): string {
+  return JSON.stringify(serializeScene(objects));
+}
+
+function persist(json: string): void {
+  if (saveScene(json) || warnedAboutSaving) return;
+  warnedAboutSaving = true;
+  toast("Couldn't autosave in this browser. Use Export to keep your work.", 6000);
+}
+
+function refreshActions(): void {
+  undoBtn.disabled = isPlaying || !history.canUndo;
+  redoBtn.disabled = isPlaying || !history.canRedo;
+}
+
+/** Call after every finished edit: records an undo step and autosaves. */
+function commit(): void {
+  const json = sceneJson();
+  if (!history.push(json)) return;
+  persist(json);
+  refreshActions();
+}
+
+function removeAllObjects(): void {
+  objects.forEach((obj) => Composite.remove(world, obj.bodies));
+  objects.length = 0;
+  selected = null;
+}
+
+function loadState(json: string): void {
+  const selectedIndex = selected ? objects.indexOf(selected) : -1;
+  removeAllObjects();
+  deserializeScene(JSON.parse(json)).forEach(addObject);
+  selected = objects[selectedIndex] ?? null;
+  persist(json);
+  refreshActions();
+}
+
+function undo(): void {
+  if (isPlaying || gestureActive()) return;
+  const state = history.undo();
+  if (state !== null) loadState(state);
+}
+
+function redo(): void {
+  if (isPlaying || gestureActive()) return;
+  const state = history.redo();
+  if (state !== null) loadState(state);
+}
+
+// ---- Helpers --------------------------------------------------------------
 
 function getCanvasPoint(e: MouseEvent): Point {
   const rect = canvas.getBoundingClientRect();
@@ -97,6 +181,7 @@ function setToolbarDisabled(disabled: boolean): void {
   clearBtn.disabled = disabled;
   exportBtn.disabled = disabled;
   importBtn.disabled = disabled;
+  refreshActions();
 }
 
 function setPlayingUi(playing: boolean): void {
@@ -144,6 +229,13 @@ function updateSpin(obj: SceneObject, p: Point): void {
   spinLastTime = now;
 }
 
+function toggleLock(obj: SceneObject): void {
+  setLocked(obj, !obj.locked);
+  commit();
+}
+
+// ---- Pointer input (mouse, touch and pen) ---------------------------------
+
 toolButtons.forEach((btn) => {
   btn.addEventListener('click', () => {
     if (isPlaying) return;
@@ -153,13 +245,22 @@ toolButtons.forEach((btn) => {
 
 canvas.addEventListener('contextmenu', (e) => {
   e.preventDefault();
-  if (isPlaying) return;
+  // A touch long-press also raises this event; locking is the Lock button there.
+  if (isPlaying || lastPointerType === 'touch') return;
   const hit = findObjectAtPoint(objects, getCanvasPoint(e));
-  if (hit) setLocked(hit, !hit.locked);
+  if (hit) toggleLock(hit);
 });
 
-canvas.addEventListener('mousedown', (e) => {
-  if (isPlaying || e.button !== 0) return;
+canvas.addEventListener('pointerdown', (e) => {
+  setHelpOpen(false);
+  if (isPlaying || e.button !== 0 || activePointer !== null) return;
+  activePointer = e.pointerId;
+  lastPointerType = e.pointerType;
+  try {
+    canvas.setPointerCapture(e.pointerId);
+  } catch {
+    // capture is a nicety; dragging still works without it
+  }
   const p = getCanvasPoint(e);
 
   if (tool === 'draw') {
@@ -180,12 +281,14 @@ canvas.addEventListener('mousedown', (e) => {
     addObject(obj);
     selected = obj;
     selectTool('select');
+    commit();
     return;
   }
 
   if (selected && selected.type === 'ball') {
     const handle = getHandlePosition(selected);
-    if (Math.hypot(p.x - handle.x, p.y - handle.y) <= HANDLE_HIT_RADIUS) {
+    const reach = e.pointerType === 'touch' ? HANDLE_HIT_RADIUS_TOUCH : HANDLE_HIT_RADIUS;
+    if (Math.hypot(p.x - handle.x, p.y - handle.y) <= reach) {
       spinDragging = selected;
       spinLastTime = 0;
       return;
@@ -197,8 +300,8 @@ canvas.addEventListener('mousedown', (e) => {
   if (hit) dragging = { obj: hit, lastX: p.x, lastY: p.y };
 });
 
-window.addEventListener('mousemove', (e) => {
-  if (isPlaying) return;
+window.addEventListener('pointermove', (e) => {
+  if (isPlaying || e.pointerId !== activePointer) return;
   const p = getCanvasPoint(e);
 
   if (isDrawingStroke) {
@@ -223,7 +326,11 @@ window.addEventListener('mousemove', (e) => {
   }
 });
 
-window.addEventListener('mouseup', () => {
+function endGesture(e: PointerEvent): void {
+  if (e.pointerId !== activePointer) return;
+  activePointer = null;
+
+  let changed = false;
   if (isDrawingStroke) {
     isDrawingStroke = false;
     const obj = createTrack(drawPoints);
@@ -231,6 +338,7 @@ window.addEventListener('mouseup', () => {
     if (obj) {
       addObject(obj);
       selected = obj;
+      changed = true;
     }
     selectTool('select');
   }
@@ -241,12 +349,20 @@ window.addEventListener('mouseup', () => {
     if (obj) {
       addObject(obj);
       selected = obj;
+      changed = true;
     }
     selectTool('select');
   }
+  if (dragging || spinDragging) changed = true;
   dragging = null;
   spinDragging = null;
-});
+  if (changed) commit();
+}
+
+window.addEventListener('pointerup', endGesture);
+window.addEventListener('pointercancel', endGesture);
+
+// ---- Play / Stop ----------------------------------------------------------
 
 playBtn.addEventListener('click', () => {
   if (!isPlaying) {
@@ -266,6 +382,8 @@ playBtn.addEventListener('click', () => {
     setToolbarDisabled(false);
   }
 });
+
+// ---- Help + grid ----------------------------------------------------------
 
 const helpBtn = document.getElementById('help-btn') as HTMLButtonElement;
 const helpPanel = document.getElementById('help-panel') as HTMLDivElement;
@@ -309,29 +427,14 @@ setGridOn(loadGridPref());
 gridBtn.addEventListener('click', () => setGridOn(!canvas.classList.contains('grid-on')));
 
 helpBtn.addEventListener('click', () => setHelpOpen(!helpOpen));
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') setHelpOpen(false);
-});
-canvas.addEventListener('mousedown', () => setHelpOpen(false));
 
-// A goal zone is reached when anything free-moving (not locked) touches it.
-Events.on(engine, 'collisionStart', (e) => {
-  for (const pair of e.pairs) {
-    for (const [zone, other] of [
-      [pair.bodyA, pair.bodyB],
-      [pair.bodyB, pair.bodyA],
-    ]) {
-      if (zone.label !== 'goal' || other.label === 'goal' || other.isStatic) continue;
-      const goal = objects.find((o) => o.type === 'goal' && o.bodies[0] === zone);
-      if (goal) setGoalReached(goal, true);
-    }
-  }
-});
+// ---- Selected-object bar --------------------------------------------------
 
 const propsPanel = document.getElementById('props') as HTMLDivElement;
 const propsTitle = document.getElementById('props-title') as HTMLSpanElement;
 const propsMaterialWrap = document.getElementById('props-material-wrap') as HTMLLabelElement;
 const propsMaterial = document.getElementById('props-material') as HTMLSelectElement;
+const propsLock = document.getElementById('props-lock') as HTMLButtonElement;
 const propsRotateLeft = document.getElementById('props-rotate-left') as HTMLButtonElement;
 const propsRotateRight = document.getElementById('props-rotate-right') as HTMLButtonElement;
 const propsDelete = document.getElementById('props-delete') as HTMLButtonElement;
@@ -343,7 +446,7 @@ for (const opt of MATERIAL_OPTIONS) {
 let propsKey = '';
 
 function syncPropsPanel(): void {
-  const key = selected && !isPlaying ? `${selected.id}|${selected.material}` : '';
+  const key = selected && !isPlaying ? `${selected.id}|${selected.material}|${selected.locked}` : '';
   if (key === propsKey) return;
   propsKey = key;
 
@@ -353,17 +456,29 @@ function syncPropsPanel(): void {
   propsTitle.textContent = OBJECT_LABELS[selected.type];
   propsMaterialWrap.hidden = selected.type === 'goal';
   propsMaterial.value = selected.material;
+  propsLock.hidden = selected.type === 'goal';
+  propsLock.textContent = selected.locked ? 'Unlock' : 'Lock';
+  propsLock.title = selected.locked ? 'Let this object move during Play' : 'Fix this object in place during Play';
   propsRotateLeft.hidden = propsRotateRight.hidden = selected.type === 'ball';
 }
 
 propsMaterial.addEventListener('change', () => {
-  if (selected && !isPlaying) applyMaterial(selected, propsMaterial.value as Material);
+  if (!selected || isPlaying) return;
+  applyMaterial(selected, propsMaterial.value as Material);
+  commit();
+});
+propsLock.addEventListener('click', () => {
+  if (selected && !isPlaying) toggleLock(selected);
 });
 propsRotateLeft.addEventListener('click', () => {
-  if (selected && !isPlaying) rotateObject(selected, -ROTATE_STEP);
+  if (!selected || isPlaying) return;
+  rotateObject(selected, -ROTATE_STEP);
+  commit();
 });
 propsRotateRight.addEventListener('click', () => {
-  if (selected && !isPlaying) rotateObject(selected, ROTATE_STEP);
+  if (!selected || isPlaying) return;
+  rotateObject(selected, ROTATE_STEP);
+  commit();
 });
 
 function deleteSelected(): void {
@@ -371,24 +486,46 @@ function deleteSelected(): void {
   Composite.remove(world, selected.bodies);
   objects.splice(objects.indexOf(selected), 1);
   selected = null;
+  commit();
 }
 
 propsDelete.addEventListener('click', deleteSelected);
+
+// ---- Keyboard -------------------------------------------------------------
+
 window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    setHelpOpen(false);
+    return;
+  }
+
+  if (e.ctrlKey || e.metaKey) {
+    const key = e.key.toLowerCase();
+    if (key === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) redo();
+      else undo();
+    } else if (key === 'y') {
+      e.preventDefault();
+      redo();
+    }
+    return;
+  }
+
   if (e.key !== 'Delete' && e.key !== 'Backspace') return;
   if (e.target instanceof HTMLSelectElement || e.target instanceof HTMLInputElement) return;
   deleteSelected();
 });
 
-function clearScene(): void {
-  objects.forEach((obj) => Composite.remove(world, obj.bodies));
-  objects.length = 0;
-  selected = null;
-}
+// ---- Actions panel --------------------------------------------------------
+
+undoBtn.addEventListener('click', undo);
+redoBtn.addEventListener('click', redo);
 
 clearBtn.addEventListener('click', () => {
   if (isPlaying) return;
-  clearScene();
+  removeAllObjects();
+  commit();
 });
 
 exportBtn.addEventListener('click', () => {
@@ -417,12 +554,15 @@ importFile.addEventListener('change', async () => {
   if (!file || isPlaying) return;
   try {
     const imported = deserializeScene(JSON.parse(await file.text()));
-    clearScene();
+    removeAllObjects();
     imported.forEach(addObject);
+    commit();
   } catch (err) {
     alert(`Couldn't import that file: ${err instanceof Error ? err.message : 'invalid file'}`);
   }
 });
+
+// ---- Drawing overlays -----------------------------------------------------
 
 function drawPadlock(ctx: CanvasRenderingContext2D, x: number, y: number): void {
   ctx.save();
@@ -504,7 +644,7 @@ Events.on(render, 'afterRender', () => {
     const handle = getHandlePosition(selected);
     ctx.fillStyle = '#5ad1e6';
     ctx.beginPath();
-    ctx.arc(handle.x, handle.y, 7, 0, Math.PI * 2);
+    ctx.arc(handle.x, handle.y, lastPointerType === 'touch' ? 10 : 7, 0, Math.PI * 2);
     ctx.fill();
 
     if (Math.abs(selected.spin) > 0.05) {
@@ -524,10 +664,22 @@ Events.on(render, 'afterRender', () => {
 });
 
 window.addEventListener('resize', () => {
-  render.canvas.width = window.innerWidth;
-  render.canvas.height = window.innerHeight;
-  render.options.width = window.innerWidth;
-  render.options.height = window.innerHeight;
+  Render.setPixelRatio(render, window.devicePixelRatio);
+  Render.setSize(render, window.innerWidth, window.innerHeight);
 });
+
+// ---- Start-up: restore the last autosaved scene ---------------------------
+
+const savedScene = loadSavedScene();
+if (savedScene) {
+  try {
+    deserializeScene(JSON.parse(savedScene)).forEach(addObject);
+    if (objects.length > 0) toast('Restored your last scene');
+  } catch {
+    removeAllObjects(); // unreadable save: start fresh; the next edit overwrites it
+  }
+}
+history = new SceneHistory(sceneJson());
+refreshActions();
 
 Render.run(render);

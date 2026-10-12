@@ -57,6 +57,14 @@
           <span id="play-label">Play</span>
         </button>
         <div class="divider"></div>
+        <button id="undo-btn" class="action-btn" title="Undo (Ctrl+Z)" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4L4 9l5 5M4 9h10a6 6 0 0 1 0 12h-3" /></svg>
+          <span class="label">Undo</span>
+        </button>
+        <button id="redo-btn" class="action-btn" title="Redo (Ctrl+Y)" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4l5 5-5 5M20 9H10a6 6 0 0 0 0 12h3" /></svg>
+          <span class="label">Redo</span>
+        </button>
         <button id="clear-btn" class="action-btn danger" title="Remove everything from the canvas">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12" /></svg>
           <span class="label">Clear</span>
@@ -119,8 +127,12 @@
           <dd>Load a saved scene file, replacing the canvas.</dd>
           <dt>Grid</dt>
           <dd>Show or hide the background grid, a visual guide for lining things up. Your choice is remembered.</dd>
-          <dt>Right-click</dt>
-          <dd>Lock or unlock an object. Locked objects (padlock) stay fixed during Play.</dd>
+          <dt>Undo / Redo</dt>
+          <dd>Step back or forward through your edits (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z).</dd>
+          <dt>Autosave</dt>
+          <dd>Your scene is saved in this browser after every change and comes back when you reopen the page. It stays on this device, so use Export to keep a copy or move it elsewhere.</dd>
+          <dt>Lock</dt>
+          <dd>Right-click an object, or use the Lock button in the bottom bar (the only way on a touch screen). Locked objects (padlock) stay fixed during Play.</dd>
           <dt>Blue handle</dt>
           <dd>On a selected ball, drag it around the ball to set its initial spin.</dd>
           <dt>Surface</dt>
@@ -136,10 +148,12 @@
           Surface
           <select id="props-material"></select>
         </label>
+        <button id="props-lock" class="tool-btn">Lock</button>
         <button id="props-rotate-left" class="tool-btn" title="Rotate 15° counter-clockwise">&#8634;</button>
         <button id="props-rotate-right" class="tool-btn" title="Rotate 15° clockwise">&#8635;</button>
         <button id="props-delete" class="tool-btn danger" title="Delete (Del)">Delete</button>
       </div>
+      <div id="toast" role="status" hidden></div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
