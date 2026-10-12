@@ -628,7 +628,7 @@ Events.on(render, 'afterRender', () => {
       const anchor = obj.bodies[Math.floor(obj.bodies.length / 2)].position;
       drawPadlock(ctx, anchor.x, anchor.y);
     }
-    if (obj === selected) {
+    if (obj === selected && !isPlaying) {
       ctx.strokeStyle = '#5ad1e6';
       ctx.lineWidth = 2;
       ctx.strokeRect(
