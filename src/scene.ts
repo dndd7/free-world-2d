@@ -1,4 +1,5 @@
-import { Bodies, Body, Pair, Query } from 'matter-js';
+import { Bodies, Body, Events, Pair, Query } from 'matter-js';
+import type { Engine } from 'matter-js';
 
 export type ObjectType = 'ball' | 'box' | 'triangle' | 'plank' | 'track' | 'goal';
 export type Material = 'normal' | 'ice' | 'rubber' | 'sticky';
@@ -313,10 +314,30 @@ export function restoreSnapshot(obj: SceneObject): void {
   });
 }
 
+// Matter measures angular velocity in radians per physics step (1/60 s), while the spin
+// dial and saved scenes use radians per second.
+const STEPS_PER_SECOND = 60;
+
 export function applyInitialSpin(obj: SceneObject): void {
   if (obj.type === 'ball' && obj.spin) {
-    Body.setAngularVelocity(obj.bodies[0], obj.spin);
+    Body.setAngularVelocity(obj.bodies[0], obj.spin / STEPS_PER_SECOND);
   }
+}
+
+/** Marks a goal zone as reached when anything free-moving (not locked) touches it. */
+export function watchGoals(engine: Engine, getObjects: () => SceneObject[]): void {
+  Events.on(engine, 'collisionStart', (e) => {
+    for (const pair of e.pairs) {
+      for (const [zone, other] of [
+        [pair.bodyA, pair.bodyB],
+        [pair.bodyB, pair.bodyA],
+      ]) {
+        if (zone.label !== 'goal' || other.label === 'goal' || other.isStatic) continue;
+        const goal = getObjects().find((o) => o.type === 'goal' && o.bodies[0] === zone);
+        if (goal) setGoalReached(goal, true);
+      }
+    }
+  });
 }
 
 export function findObjectAtPoint(objects: SceneObject[], point: Point): SceneObject | null {
