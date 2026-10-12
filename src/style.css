@@ -30,6 +30,17 @@ body {
   height: 100%;
 }
 
+/* Matter sets the canvas background (and forces background-size: contain) inline,
+   so the grid layers need !important to win. Minor lines every 40px, major every 200px. */
+#sim.grid-on {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px) !important;
+  background-size: 200px 200px, 200px 200px, 40px 40px, 40px 40px !important;
+}
+
 button {
   font-family: inherit;
 }

@@ -70,6 +70,14 @@
           <span class="label">Import</span>
         </button>
         <input id="import-file" type="file" accept=".json,application/json" hidden />
+        <div class="divider"></div>
+        <button id="grid-btn" class="action-btn" aria-pressed="true" title="Show or hide the grid">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="4" y="4" width="16" height="16" rx="1.5" />
+            <path d="M9.3 4v16M14.7 4v16M4 9.3h16M4 14.7h16" />
+          </svg>
+          <span class="label">Grid</span>
+        </button>
         <button
           id="help-btn"
           class="action-btn"
@@ -109,6 +117,8 @@
           <dd>Save the current scene to a file.</dd>
           <dt>Import</dt>
           <dd>Load a saved scene file, replacing the canvas.</dd>
+          <dt>Grid</dt>
+          <dd>Show or hide the background grid, a visual guide for lining things up. Your choice is remembered.</dd>
           <dt>Right-click</dt>
           <dd>Lock or unlock an object. Locked objects (padlock) stay fixed during Play.</dd>
           <dt>Blue handle</dt>

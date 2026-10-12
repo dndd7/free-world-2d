@@ -283,6 +283,31 @@ function setHelpOpen(open: boolean): void {
   helpBtn.classList.toggle('active', open);
 }
 
+const gridBtn = document.getElementById('grid-btn') as HTMLButtonElement;
+const GRID_PREF_KEY = 'free-world-2d:grid';
+
+function loadGridPref(): boolean {
+  try {
+    return localStorage.getItem(GRID_PREF_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
+
+function setGridOn(on: boolean): void {
+  canvas.classList.toggle('grid-on', on);
+  gridBtn.classList.toggle('active', on);
+  gridBtn.setAttribute('aria-pressed', String(on));
+  try {
+    localStorage.setItem(GRID_PREF_KEY, on ? 'on' : 'off');
+  } catch {
+    // preference just won't persist
+  }
+}
+
+setGridOn(loadGridPref());
+gridBtn.addEventListener('click', () => setGridOn(!canvas.classList.contains('grid-on')));
+
 helpBtn.addEventListener('click', () => setHelpOpen(!helpOpen));
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') setHelpOpen(false);

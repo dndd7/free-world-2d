@@ -20,6 +20,7 @@ Help are in the panel at the top right. On narrow screens both collapse to icons
 | **Goal** | Click the canvas to place a goal zone; it lights up when anything free-moving (not locked) touches it during Play, and resets on Stop |
 | **Bottom bar** | Appears when an object is selected: pick its **Surface**, rotate it in 15° steps, or delete it (the Delete key works too) |
 | **Right-click** | Toggle lock on the object under the cursor (locked objects show a padlock while editing and stay fixed during simulation) |
+| **Grid** | Show or hide a background grid (40px squares, brighter every 200px) as a guide for lining things up; the setting is remembered |
 | **? Help** | Opens a panel describing what each button does |
 | Drag a selected ball's blue handle | Set its initial spin direction/speed |
 | **Play / Stop** | Play captures the current layout, applies each ball's spin, and runs the simulation; Stop restores everything back to how you left it |
