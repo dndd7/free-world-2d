@@ -69,6 +69,17 @@ auto-deploy `dist/` to GitHub Pages on every push to `master` (running the tests
 first, so a failing test blocks the deploy); enable Pages for the repo
 (Settings → Pages → Source: GitHub Actions) to use it.
 
+## Security checks
+
+- **Dependency audit** — `npm audit --audit-level=high` runs on every push, on pull
+  requests and weekly (`.github/workflows/security.yml`); run it locally with `npm audit`.
+- **Code scanning** — CodeQL analyses the TypeScript on the same schedule.
+- **Dependency updates** — Dependabot opens weekly pull requests for npm packages and
+  GitHub Actions (`.github/dependabot.yml`), and GitHub's secret scanning and push
+  protection are enabled for the repo.
+- The app is fully client-side: it makes no network requests and keeps its data in
+  the browser. Imported scene files are validated before use.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
