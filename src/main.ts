@@ -71,7 +71,8 @@ const render = Render.create({
     height: window.innerHeight,
     pixelRatio: window.devicePixelRatio,
     wireframes: false,
-    background: '#1a1a1f',
+    // Transparent so the grid layer (and the page's dark background) show through.
+    background: 'transparent',
   },
 });
 
@@ -412,8 +413,12 @@ function loadGridPref(): boolean {
   }
 }
 
+const gridLayer = document.getElementById('grid') as HTMLDivElement;
+let gridOn = true;
+
 function setGridOn(on: boolean): void {
-  canvas.classList.toggle('grid-on', on);
+  gridOn = on;
+  gridLayer.hidden = !on;
   gridBtn.classList.toggle('active', on);
   gridBtn.setAttribute('aria-pressed', String(on));
   try {
@@ -424,7 +429,7 @@ function setGridOn(on: boolean): void {
 }
 
 setGridOn(loadGridPref());
-gridBtn.addEventListener('click', () => setGridOn(!canvas.classList.contains('grid-on')));
+gridBtn.addEventListener('click', () => setGridOn(!gridOn));
 
 helpBtn.addEventListener('click', () => setHelpOpen(!helpOpen));
 
