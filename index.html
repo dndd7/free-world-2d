@@ -80,6 +80,21 @@
         </button>
         <input id="import-file" type="file" accept=".json,application/json" hidden />
         <div class="divider"></div>
+        <button
+          id="examples-btn"
+          class="action-btn"
+          aria-expanded="false"
+          aria-controls="examples-panel"
+          title="Load a ready-made design"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="4" y="4" width="7" height="7" rx="1.5" />
+            <rect x="13" y="4" width="7" height="7" rx="1.5" />
+            <rect x="4" y="13" width="7" height="7" rx="1.5" />
+            <rect x="13" y="13" width="7" height="7" rx="1.5" />
+          </svg>
+          <span class="label">Examples</span>
+        </button>
         <button id="demo-btn" class="action-btn" title="Watch a short demo of how it works">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="12" r="9" />
@@ -109,6 +124,12 @@
         </button>
       </div>
 
+      <div id="examples-panel" role="dialog" aria-label="Ready-made designs" hidden>
+        <h2>Ready-made designs</h2>
+        <p>Pick one, then press Play. Undo brings your own scene back.</p>
+        <div id="examples-grid"></div>
+      </div>
+
       <div id="help-panel" hidden>
         <dl>
           <dt>Select</dt>
@@ -135,6 +156,8 @@
           <dd>Load a saved scene file, replacing the canvas.</dd>
           <dt>Grid</dt>
           <dd>Show or hide the background grid, a visual guide for lining things up. Your choice is remembered.</dd>
+          <dt>Examples</dt>
+          <dd>Load a ready-made design, such as a slide, a roller coaster or a peg board. Press Play to watch it work, then change something. Undo brings your own scene back.</dd>
           <dt>Demo</dt>
           <dd>Watch an automatic walkthrough: it builds a slide, a ball and a goal, then plays it. Your own scene is put back afterwards, or you can keep the demo scene.</dd>
           <dt>Undo / Redo</dt>

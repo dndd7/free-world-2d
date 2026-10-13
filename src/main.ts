@@ -1,5 +1,6 @@
 import { Composite, Engine, Events, Render, Runner } from 'matter-js';
 import { startDemo, type DemoHost } from './demo';
+import { EXAMPLES, exampleExtent, placeExample, type Example } from './examples';
 import { SceneHistory } from './history';
 import {
   MATERIAL_OPTIONS,
@@ -29,6 +30,7 @@ import {
   type SceneObject,
 } from './scene';
 import { hasSeenDemo, loadSavedScene, markDemoSeen, saveScene } from './storage';
+import { drawThumbnail } from './thumbnail';
 import './style.css';
 
 type Tool = 'select' | 'draw' | 'plank' | 'ball' | 'box' | 'triangle' | 'goal';
@@ -58,6 +60,9 @@ const importBtn = document.getElementById('import-btn') as HTMLButtonElement;
 const importFile = document.getElementById('import-file') as HTMLInputElement;
 const toastEl = document.getElementById('toast') as HTMLDivElement;
 const demoBtn = document.getElementById('demo-btn') as HTMLButtonElement;
+const examplesBtn = document.getElementById('examples-btn') as HTMLButtonElement;
+const examplesPanel = document.getElementById('examples-panel') as HTMLDivElement;
+const examplesGrid = document.getElementById('examples-grid') as HTMLDivElement;
 const demoPrompt = document.getElementById('demo-prompt') as HTMLDivElement;
 
 installSurfaceRules();
@@ -189,6 +194,7 @@ function setToolbarDisabled(disabled: boolean): void {
   exportBtn.disabled = disabled;
   importBtn.disabled = disabled;
   demoBtn.disabled = disabled;
+  examplesBtn.disabled = disabled;
   refreshActions();
 }
 
@@ -261,6 +267,7 @@ canvas.addEventListener('contextmenu', (e) => {
 
 canvas.addEventListener('pointerdown', (e) => {
   setHelpOpen(false);
+  setExamplesOpen(false);
   if (isPlaying || e.button !== 0 || activePointer !== null) return;
   activePointer = e.pointerId;
   lastPointerType = e.pointerType;
@@ -401,6 +408,7 @@ let helpOpen = false;
 function setHelpOpen(open: boolean): void {
   helpOpen = open;
   if (open) {
+    setExamplesOpen(false);
     const actionsBottom = document.getElementById('actions')!.getBoundingClientRect().bottom;
     helpPanel.style.top = `${actionsBottom + 8}px`;
   }
@@ -439,6 +447,75 @@ setGridOn(loadGridPref());
 gridBtn.addEventListener('click', () => setGridOn(!gridOn));
 
 helpBtn.addEventListener('click', () => setHelpOpen(!helpOpen));
+
+// ---- Examples gallery -----------------------------------------------------
+
+let examplesOpen = false;
+let examplesBuilt = false;
+
+function setExamplesOpen(open: boolean): void {
+  examplesOpen = open;
+  if (open) {
+    setHelpOpen(false);
+    if (!examplesBuilt) buildExampleCards();
+    examplesPanel.style.top = `${document.getElementById('actions')!.getBoundingClientRect().bottom + 8}px`;
+  }
+  examplesPanel.hidden = !open;
+  examplesBtn.setAttribute('aria-expanded', String(open));
+  examplesBtn.classList.toggle('active', open);
+}
+
+function buildExampleCards(): void {
+  examplesBuilt = true;
+  for (const example of EXAMPLES) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'example-card';
+
+    const thumb = document.createElement('canvas');
+    drawThumbnail(thumb, example.build());
+    const title = document.createElement('strong');
+    title.textContent = example.title;
+    const blurb = document.createElement('span');
+    blurb.textContent = example.blurb;
+
+    card.append(thumb, title, blurb);
+    card.addEventListener('click', () => loadExample(example));
+    examplesGrid.append(card);
+  }
+}
+
+function loadExample(example: Example): void {
+  if (isPlaying || demoActive) return;
+  if (
+    objects.length > 0 &&
+    !window.confirm(`Replace what's on the canvas with “${example.title}”? Undo will bring your scene back.`)
+  ) {
+    return;
+  }
+
+  const palette = document.getElementById('palette')!.getBoundingClientRect();
+  const actions = document.getElementById('actions')!.getBoundingClientRect();
+  const x = palette.right + 16;
+  const y = actions.bottom + 16;
+  const area = { x, y, w: window.innerWidth - x - 12, h: Math.max(0, window.innerHeight - y - 80) };
+  const extent = exampleExtent(example);
+
+  removeAllObjects();
+  placeExample(example, area).forEach(addObject);
+  selectTool('select');
+  setExamplesOpen(false);
+  commit(); // one undoable step
+
+  const offScreen = extent.w > area.w + 20 || extent.h > area.h + 20;
+  toast(
+    `${example.title} is ready: press Play! ${example.tip}` +
+      (offScreen ? ' Part of this design is off-screen, so it works best in a bigger window.' : ''),
+    8000,
+  );
+}
+
+examplesBtn.addEventListener('click', () => setExamplesOpen(!examplesOpen));
 
 // ---- Selected-object bar --------------------------------------------------
 
@@ -508,6 +585,7 @@ propsDelete.addEventListener('click', deleteSelected);
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     setHelpOpen(false);
+    setExamplesOpen(false);
     return;
   }
 
@@ -703,6 +781,7 @@ let stashedScene = '';
 const demoHost: DemoHost = {
   begin() {
     setHelpOpen(false);
+    setExamplesOpen(false);
     dismissDemoPrompt(true);
     stashedScene = sceneJson();
     demoActive = true;
