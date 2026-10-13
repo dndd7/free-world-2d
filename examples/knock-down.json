@@ -1,0 +1,36 @@
+{
+  "app": "free-world-2d",
+  "version": 1,
+  "meta": {
+    "title": "Knock-down",
+    "description": "A ball rolls down a ramp and crashes into a stack of icy boxes, sending them off the edge.",
+    "tip": "Switch the boxes to Normal: the ball is no longer enough to push them off the edge.",
+    "order": 6
+  },
+  "objects": [
+    {
+      "type": "plank", "locked": true, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 95, "y": 95, "angle": 0.723, "length": 226.716 }]
+    },
+    {
+      "type": "plank", "locked": true, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 287.5, "y": 172, "angle": 0, "length": 225 }]
+    },
+    {
+      "type": "ball", "locked": false, "material": "normal", "spin": 8, "handleAngle": -1.5708,
+      "bodies": [{ "x": 52.142, "y": 6.506, "angle": 0 }]
+    },
+    {
+      "type": "box", "locked": false, "material": "ice", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 320, "y": 130, "angle": 0 }]
+    },
+    {
+      "type": "box", "locked": false, "material": "ice", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 320, "y": 60, "angle": 0 }]
+    },
+    {
+      "type": "goal", "locked": false, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 430, "y": 310, "angle": 0 }]
+    }
+  ]
+}

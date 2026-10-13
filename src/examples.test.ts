@@ -166,3 +166,41 @@ describe('what the tips promise is true', () => {
     expect(play('first-slide', spin(-7))!).toBeGreaterThan(forward);
   });
 });
+
+describe('the examples folder', () => {
+  // The raw text of every file, exactly as the Import button would receive it.
+  const RAW = import.meta.glob('../examples/*.json', { query: '?raw', eager: true, import: 'default' }) as Record<string, string>;
+  const files = Object.entries(RAW).map(([path, text]) => ({ name: path.split('/').pop()!, text }));
+  const parsed = files.map((f) => ({ name: f.name, file: JSON.parse(f.text) }));
+
+  it('is picked up completely, with nothing silently skipped', () => {
+    expect(files.length).toBeGreaterThanOrEqual(6);
+    expect(EXAMPLES.map((e) => e.id).sort()).toEqual(files.map((f) => f.name.replace(/.json$/, '')).sort());
+  });
+
+  it('contains valid scene files that the Import button accepts', () => {
+    for (const { name, file } of parsed) {
+      expect(file.app, name).toBe('free-world-2d');
+      expect(file.version, name).toBe(1);
+      expect(() => deserializeScene(file), name).not.toThrow();
+      expect(deserializeScene(file).length, name).toBeGreaterThan(1);
+    }
+  });
+
+  it('gives every design a title, description, tip and order', () => {
+    for (const { name, file } of parsed) {
+      expect(file.meta?.title, name + ' title').toBeTruthy();
+      expect(file.meta?.description, name + ' description').toBeTruthy();
+      expect(file.meta?.tip, name + ' tip').toBeTruthy();
+      expect(typeof file.meta?.order, name + ' order').toBe('number');
+    }
+  });
+
+  it('gives every design its own position in the gallery, in that order', () => {
+    const orders = parsed.map((p) => p.file.meta.order as number);
+    expect(new Set(orders).size).toBe(orders.length);
+    const byId = new Map(parsed.map((p) => [p.name.replace(/.json$/, ''), p.file.meta.order as number]));
+    const listed = EXAMPLES.map((e) => byId.get(e.id)!);
+    expect(listed).toEqual([...listed].sort((a, b) => a - b));
+  });
+});

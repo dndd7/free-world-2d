@@ -1,0 +1,52 @@
+{
+  "app": "free-world-2d",
+  "version": 1,
+  "meta": {
+    "title": "Roller coaster",
+    "description": "A hand-drawn track: the ball swoops down a hill, coasts over a bump and swoops down again into the goal.",
+    "tip": "Switch the track to Ice for a faster ride, or draw your own with the Draw tool.",
+    "order": 7
+  },
+  "objects": [
+    {
+      "type": "track", "locked": true, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [
+        { "x": 10, "y": 76.346, "angle": 0.1338, "length": 20.18 },
+        { "x": 30, "y": 81.598, "angle": 0.3724, "length": 21.472 },
+        { "x": 50, "y": 91.588, "angle": 0.5466, "length": 23.411 },
+        { "x": 70, "y": 105.338, "angle": 0.654, "length": 25.201 },
+        { "x": 90, "y": 121.502, "angle": 0.7044, "length": 26.246 },
+        { "x": 110, "y": 138.498, "angle": 0.7044, "length": 26.246 },
+        { "x": 130, "y": 154.662, "angle": 0.654, "length": 25.201 },
+        { "x": 150, "y": 168.412, "angle": 0.5466, "length": 23.411 },
+        { "x": 170, "y": 178.402, "angle": 0.3724, "length": 21.472 },
+        { "x": 190, "y": 183.654, "angle": 0.1338, "length": 20.18 },
+        { "x": 210, "y": 178.938, "angle": -0.545, "length": 23.388 },
+        { "x": 230, "y": 172.876, "angle": 0, "length": 20 },
+        { "x": 250, "y": 178.938, "angle": 0.545, "length": 23.388 },
+        { "x": 270, "y": 186.346, "angle": 0.1338, "length": 20.18 },
+        { "x": 290, "y": 191.598, "angle": 0.3724, "length": 21.472 },
+        { "x": 310, "y": 201.588, "angle": 0.5466, "length": 23.411 },
+        { "x": 330, "y": 215.338, "angle": 0.654, "length": 25.201 },
+        { "x": 350, "y": 231.502, "angle": 0.7044, "length": 26.246 },
+        { "x": 370, "y": 248.498, "angle": 0.7044, "length": 26.246 },
+        { "x": 390, "y": 264.662, "angle": 0.654, "length": 25.201 },
+        { "x": 410, "y": 278.412, "angle": 0.5466, "length": 23.411 },
+        { "x": 430, "y": 288.402, "angle": 0.3724, "length": 21.472 },
+        { "x": 450, "y": 293.654, "angle": 0.1338, "length": 20.18 },
+        { "x": 470, "y": 295, "angle": 0, "length": 20 },
+        { "x": 490, "y": 295, "angle": 0, "length": 20 },
+        { "x": 510, "y": 295, "angle": 0, "length": 20 },
+        { "x": 530, "y": 295, "angle": 0, "length": 20 }
+      ]
+    },
+    {
+      "type": "ball", "locked": false, "material": "normal", "spin": 8, "handleAngle": -1.5708,
+      "bodies": [{ "x": 40, "y": 48, "angle": 0 }]
+    },
+    {
+      "type": "goal", "locked": false, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 480, "y": 250, "angle": 0 }]
+    }
+  ]
+}

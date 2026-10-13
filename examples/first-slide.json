@@ -1,0 +1,24 @@
+{
+  "app": "free-world-2d",
+  "version": 1,
+  "meta": {
+    "title": "First slide",
+    "description": "A spinning ball rolls down a locked slide and drops into the goal.",
+    "tip": "Give the ball no spin, or spin it the other way: it takes noticeably longer to reach the goal.",
+    "order": 1
+  },
+  "objects": [
+    {
+      "type": "plank", "locked": true, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 145, "y": 135, "angle": 0.3869, "length": 291.548 }]
+    },
+    {
+      "type": "ball", "locked": false, "material": "normal", "spin": 7, "handleAngle": -1.5708,
+      "bodies": [{ "x": 56.737, "y": 58.008, "angle": 0 }]
+    },
+    {
+      "type": "goal", "locked": false, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 320, "y": 280, "angle": 0 }]
+    }
+  ]
+}

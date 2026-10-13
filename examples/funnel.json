@@ -1,0 +1,36 @@
+{
+  "app": "free-world-2d",
+  "version": 1,
+  "meta": {
+    "title": "Funnel",
+    "description": "Three balls fall into a funnel and are squeezed out into the goal.",
+    "tip": "Widen the gap by moving one side, or add a box to jam it.",
+    "order": 5
+  },
+  "objects": [
+    {
+      "type": "plank", "locked": true, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 122.5, "y": 185, "angle": 0.588, "length": 198.305 }]
+    },
+    {
+      "type": "plank", "locked": true, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 417.5, "y": 185, "angle": 2.5536, "length": 198.305 }]
+    },
+    {
+      "type": "ball", "locked": false, "material": "normal", "spin": 0, "handleAngle": -1.5708,
+      "bodies": [{ "x": 150, "y": 40, "angle": 0 }]
+    },
+    {
+      "type": "ball", "locked": false, "material": "normal", "spin": 0, "handleAngle": -1.5708,
+      "bodies": [{ "x": 270, "y": 20, "angle": 0 }]
+    },
+    {
+      "type": "ball", "locked": false, "material": "normal", "spin": 0, "handleAngle": -1.5708,
+      "bodies": [{ "x": 390, "y": 40, "angle": 0 }]
+    },
+    {
+      "type": "goal", "locked": false, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 270, "y": 350, "angle": 0 }]
+    }
+  ]
+}

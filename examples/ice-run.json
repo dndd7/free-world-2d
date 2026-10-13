@@ -1,0 +1,28 @@
+{
+  "app": "free-world-2d",
+  "version": 1,
+  "meta": {
+    "title": "Ice run",
+    "description": "A box slides down an icy ramp and glides all the way into the goal.",
+    "tip": "Set the box, ramp and floor all back to Normal and the box stops short. Ice on just one of them is enough to keep it sliding.",
+    "order": 3
+  },
+  "objects": [
+    {
+      "type": "plank", "locked": true, "material": "ice", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 110, "y": 80, "angle": 0.3805, "length": 215.407 }]
+    },
+    {
+      "type": "plank", "locked": true, "material": "ice", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 372.5, "y": 122, "angle": 0, "length": 335 }]
+    },
+    {
+      "type": "box", "locked": false, "material": "ice", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 75.97, "y": 20.076, "angle": 0 }]
+    },
+    {
+      "type": "goal", "locked": false, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 470, "y": 70, "angle": 0 }]
+    }
+  ]
+}

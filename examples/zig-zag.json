@@ -1,0 +1,28 @@
+{
+  "app": "free-world-2d",
+  "version": 1,
+  "meta": {
+    "title": "Zig-zag",
+    "description": "Two opposing slides send a ball one way, then back the other, into the goal.",
+    "tip": "Change a slide’s surface to Ice or Sticky and see how the ball’s path changes.",
+    "order": 2
+  },
+  "objects": [
+    {
+      "type": "plank", "locked": true, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 150, "y": 95, "angle": 0.4347, "length": 308.707 }]
+    },
+    {
+      "type": "plank", "locked": true, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 367.5, "y": 257.5, "angle": 2.7065, "length": 391.472 }]
+    },
+    {
+      "type": "ball", "locked": false, "material": "normal", "spin": 6, "handleAngle": -1.5708,
+      "bodies": [{ "x": 54.002, "y": 8.534, "angle": 0 }]
+    },
+    {
+      "type": "goal", "locked": false, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 150, "y": 420, "angle": 0 }]
+    }
+  ]
+}

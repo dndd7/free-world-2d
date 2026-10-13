@@ -1,0 +1,48 @@
+{
+  "app": "free-world-2d",
+  "version": 1,
+  "meta": {
+    "title": "Peg board",
+    "description": "A ball ricochets down through rows of pegs and into a funnel.",
+    "tip": "Nudge a peg sideways to send the ball a different way.",
+    "order": 8
+  },
+  "objects": [
+    {
+      "type": "box", "locked": true, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 100, "y": 110, "angle": 0.7854 }]
+    },
+    {
+      "type": "box", "locked": true, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 280, "y": 110, "angle": 0.7854 }]
+    },
+    {
+      "type": "box", "locked": true, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 460, "y": 110, "angle": 0.7854 }]
+    },
+    {
+      "type": "box", "locked": true, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 190, "y": 220, "angle": 0.7854 }]
+    },
+    {
+      "type": "box", "locked": true, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 370, "y": 220, "angle": 0.7854 }]
+    },
+    {
+      "type": "plank", "locked": true, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 130, "y": 362.5, "angle": 0.3142, "length": 210.297 }]
+    },
+    {
+      "type": "plank", "locked": true, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 430, "y": 362.5, "angle": 2.8274, "length": 210.297 }]
+    },
+    {
+      "type": "ball", "locked": false, "material": "normal", "spin": 0, "handleAngle": -1.5708,
+      "bodies": [{ "x": 270, "y": 20, "angle": 0 }]
+    },
+    {
+      "type": "goal", "locked": false, "material": "normal", "spin": 0, "handleAngle": 0,
+      "bodies": [{ "x": 280, "y": 440, "angle": 0 }]
+    }
+  ]
+}

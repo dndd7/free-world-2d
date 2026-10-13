@@ -376,9 +376,18 @@ export interface SerializedObject {
   bodies: SerializedBody[];
 }
 
+/** Optional description a scene file can carry, used by the example gallery. */
+export interface SceneMeta {
+  title?: string;
+  description?: string;
+  tip?: string;
+  order?: number;
+}
+
 export interface SceneFile {
   app: 'free-world-2d';
   version: 1;
+  meta?: SceneMeta;
   objects: SerializedObject[];
 }
 
