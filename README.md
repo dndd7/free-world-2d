@@ -22,6 +22,7 @@ collapse to icons. Mouse, touch and pen all work.
 | **Bottom bar** | Appears when an object is selected: pick its **Surface**, **Lock**/Unlock it, rotate it in 15° steps, or delete it (the Delete key works too) |
 | **Right-click** | Toggle lock on the object under the cursor (locked objects show a padlock while editing and stay fixed during simulation). On a touch screen use the Lock button in the bottom bar |
 | **Undo / Redo** | Step back and forward through your edits (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z; Cmd on a Mac). History lasts for the current visit |
+| **Demo** | An automatic walkthrough (about 40 seconds): a cursor builds a slide, locks it, drops a ball, spins it, adds a goal and presses Play, with captions at every step. Esc or Skip stops it. Your own scene is set aside and put back afterwards, or you can **Keep this scene** (Undo brings yours back). New visitors with an empty canvas are offered it once |
 | **Grid** | Show or hide a background grid (40px squares, brighter every 200px) as a guide for lining things up; the setting is remembered |
 | **? Help** | Opens a panel describing what each button does |
 | Drag a selected ball's blue handle | Set its initial spin direction/speed |
@@ -60,7 +61,7 @@ with any other object (Ice beats Sticky; the bouncier surface of a pair always w
 npm install
 npm run dev      # start the dev server
 npm run build    # type-check and produce a production build in dist/
-npm test         # run the unit tests (scene model, physics rules, undo history, storage)
+npm test         # run the unit tests (scene model, physics rules, demo layout, undo history, storage)
 ```
 
 This is a static site — `npm run build` output can be hosted anywhere. A

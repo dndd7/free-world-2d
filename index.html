@@ -80,6 +80,13 @@
         </button>
         <input id="import-file" type="file" accept=".json,application/json" hidden />
         <div class="divider"></div>
+        <button id="demo-btn" class="action-btn" title="Watch a short demo of how it works">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M10 8.5l5 3.5-5 3.5z" />
+          </svg>
+          <span class="label">Demo</span>
+        </button>
         <button id="grid-btn" class="action-btn" aria-pressed="true" title="Show or hide the grid">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <rect x="4" y="4" width="16" height="16" rx="1.5" />
@@ -128,6 +135,8 @@
           <dd>Load a saved scene file, replacing the canvas.</dd>
           <dt>Grid</dt>
           <dd>Show or hide the background grid, a visual guide for lining things up. Your choice is remembered.</dd>
+          <dt>Demo</dt>
+          <dd>Watch an automatic walkthrough: it builds a slide, a ball and a goal, then plays it. Your own scene is put back afterwards, or you can keep the demo scene.</dd>
           <dt>Undo / Redo</dt>
           <dd>Step back or forward through your edits (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z).</dd>
           <dt>Autosave</dt>
@@ -155,6 +164,27 @@
         <button id="props-delete" class="tool-btn danger" title="Delete (Del)">Delete</button>
       </div>
       <div id="toast" role="status" hidden></div>
+
+      <div id="demo-prompt" role="dialog" aria-label="Watch a demo" hidden>
+        <p>New here? Watch a short demo of how it works.</p>
+        <div class="demo-actions">
+          <button id="demo-prompt-dismiss" class="demo-btn">No thanks</button>
+          <button id="demo-prompt-start" class="demo-btn primary">Watch demo</button>
+        </div>
+      </div>
+
+      <div id="demo-shield" hidden></div>
+      <div id="demo-cursor" hidden aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M5 3l14 7-6 2-2 6z" /></svg>
+      </div>
+      <div id="demo-caption" role="status" aria-live="polite" hidden>
+        <div class="demo-head">
+          <span id="demo-step"></span>
+          <button id="demo-skip" class="demo-btn">Skip (Esc)</button>
+        </div>
+        <p id="demo-text"></p>
+        <div id="demo-choices" class="demo-actions" hidden></div>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

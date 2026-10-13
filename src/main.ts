@@ -1,4 +1,5 @@
 import { Composite, Engine, Events, Render, Runner } from 'matter-js';
+import { startDemo, type DemoHost } from './demo';
 import { SceneHistory } from './history';
 import {
   MATERIAL_OPTIONS,
@@ -27,7 +28,7 @@ import {
   type Point,
   type SceneObject,
 } from './scene';
-import { loadSavedScene, saveScene } from './storage';
+import { hasSeenDemo, loadSavedScene, markDemoSeen, saveScene } from './storage';
 import './style.css';
 
 type Tool = 'select' | 'draw' | 'plank' | 'ball' | 'box' | 'triangle' | 'goal';
@@ -56,6 +57,8 @@ const exportBtn = document.getElementById('export-btn') as HTMLButtonElement;
 const importBtn = document.getElementById('import-btn') as HTMLButtonElement;
 const importFile = document.getElementById('import-file') as HTMLInputElement;
 const toastEl = document.getElementById('toast') as HTMLDivElement;
+const demoBtn = document.getElementById('demo-btn') as HTMLButtonElement;
+const demoPrompt = document.getElementById('demo-prompt') as HTMLDivElement;
 
 installSurfaceRules();
 
@@ -78,6 +81,7 @@ const render = Render.create({
 
 let tool: Tool = 'select';
 let isPlaying = false;
+let demoActive = false; // while true, edits are not autosaved or added to undo history
 const objects: SceneObject[] = [];
 let selected: SceneObject | null = null;
 
@@ -133,6 +137,8 @@ function refreshActions(): void {
 
 /** Call after every finished edit: records an undo step and autosaves. */
 function commit(): void {
+  if (demoActive) return;
+  dismissDemoPrompt(true);
   const json = sceneJson();
   if (!history.push(json)) return;
   persist(json);
@@ -155,13 +161,13 @@ function loadState(json: string): void {
 }
 
 function undo(): void {
-  if (isPlaying || gestureActive()) return;
+  if (isPlaying || demoActive || gestureActive()) return;
   const state = history.undo();
   if (state !== null) loadState(state);
 }
 
 function redo(): void {
-  if (isPlaying || gestureActive()) return;
+  if (isPlaying || demoActive || gestureActive()) return;
   const state = history.redo();
   if (state !== null) loadState(state);
 }
@@ -182,6 +188,7 @@ function setToolbarDisabled(disabled: boolean): void {
   clearBtn.disabled = disabled;
   exportBtn.disabled = disabled;
   importBtn.disabled = disabled;
+  demoBtn.disabled = disabled;
   refreshActions();
 }
 
@@ -487,7 +494,7 @@ propsRotateRight.addEventListener('click', () => {
 });
 
 function deleteSelected(): void {
-  if (!selected || isPlaying) return;
+  if (!selected || isPlaying || demoActive) return;
   Composite.remove(world, selected.bodies);
   objects.splice(objects.indexOf(selected), 1);
   selected = null;
@@ -503,6 +510,8 @@ window.addEventListener('keydown', (e) => {
     setHelpOpen(false);
     return;
   }
+
+  if (demoActive) return; // the demo drives the app; Esc (handled above and by the demo) skips it
 
   if (e.ctrlKey || e.metaKey) {
     const key = e.key.toLowerCase();
@@ -673,6 +682,82 @@ window.addEventListener('resize', () => {
   Render.setSize(render, window.innerWidth, window.innerHeight);
 });
 
+// ---- Demo -----------------------------------------------------------------
+
+let promptVisible = false;
+
+function showDemoPrompt(): void {
+  promptVisible = true;
+  demoPrompt.hidden = false;
+}
+
+function dismissDemoPrompt(markSeen: boolean): void {
+  if (!promptVisible) return;
+  promptVisible = false;
+  demoPrompt.hidden = true;
+  if (markSeen) markDemoSeen();
+}
+
+let stashedScene = '';
+
+const demoHost: DemoHost = {
+  begin() {
+    setHelpOpen(false);
+    dismissDemoPrompt(true);
+    stashedScene = sceneJson();
+    demoActive = true;
+    removeAllObjects();
+    selectTool('select');
+  },
+  clear() {
+    removeAllObjects();
+    selectTool('select');
+  },
+  end(keepDemo) {
+    try {
+      if (isPlaying) playBtn.click(); // stop a run in progress so the layout is restored
+      if (keepDemo) {
+        demoActive = false;
+        selected = null;
+        commit(); // an undoable step, so the user's earlier scene is one Undo away
+      } else {
+        removeAllObjects();
+        deserializeScene(JSON.parse(stashedScene)).forEach(addObject);
+      }
+    } finally {
+      demoActive = false;
+      selectTool('select');
+      refreshActions();
+    }
+  },
+  hasUserWork() {
+    return (JSON.parse(stashedScene) as { objects: unknown[] }).objects.length > 0;
+  },
+  handlePosition() {
+    return selected?.type === 'ball' ? getHandlePosition(selected) : null;
+  },
+  goalReached() {
+    return objects.some((o) => o.type === 'goal' && o.reached);
+  },
+};
+
+async function runDemo(): Promise<void> {
+  if (demoActive || isPlaying) return;
+  markDemoSeen();
+  try {
+    await startDemo(demoHost);
+  } catch (err) {
+    console.error('The demo stopped unexpectedly', err);
+  }
+}
+
+demoBtn.addEventListener('click', () => void runDemo());
+document.getElementById('demo-prompt-dismiss')!.addEventListener('click', () => dismissDemoPrompt(true));
+document.getElementById('demo-prompt-start')!.addEventListener('click', () => {
+  dismissDemoPrompt(true);
+  void runDemo();
+});
+
 // ---- Start-up: restore the last autosaved scene ---------------------------
 
 const savedScene = loadSavedScene();
@@ -686,5 +771,12 @@ if (savedScene) {
 }
 history = new SceneHistory(sceneJson());
 refreshActions();
+
+// First visit with an empty canvas: offer the demo once, never force it.
+if (objects.length === 0 && !hasSeenDemo()) {
+  window.setTimeout(() => {
+    if (objects.length === 0 && !demoActive && !isPlaying) showDemoPrompt();
+  }, 900);
+}
 
 Render.run(render);

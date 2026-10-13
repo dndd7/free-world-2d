@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loadSavedScene, saveScene } from './storage';
+import { hasSeenDemo, loadSavedScene, markDemoSeen, saveScene } from './storage';
 
 function memoryStore() {
   const data = new Map<string, string>();
@@ -47,5 +47,36 @@ describe('scene storage', () => {
       setItem: () => undefined,
     };
     expect(loadSavedScene(broken)).toBeNull();
+  });
+});
+
+describe('first-visit demo flag', () => {
+  it('is unseen until marked, then stays seen', () => {
+    const store = memoryStore();
+    expect(hasSeenDemo(store)).toBe(false);
+    markDemoSeen(store);
+    expect(hasSeenDemo(store)).toBe(true);
+  });
+
+  it('never nags when the browser has nowhere to remember the answer', () => {
+    expect(hasSeenDemo(null)).toBe(true);
+    const unreadable = {
+      getItem: () => {
+        throw new Error('blocked');
+      },
+      setItem: () => undefined,
+    };
+    expect(hasSeenDemo(unreadable)).toBe(true);
+  });
+
+  it('does not throw when marking fails', () => {
+    const full = {
+      getItem: () => null,
+      setItem: () => {
+        throw new DOMException('quota', 'QuotaExceededError');
+      },
+    };
+    expect(() => markDemoSeen(full)).not.toThrow();
+    expect(() => markDemoSeen(null)).not.toThrow();
   });
 });

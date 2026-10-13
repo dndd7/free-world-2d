@@ -30,3 +30,27 @@ export function loadSavedScene(store: Store | null = defaultStore()): string | n
     return null;
   }
 }
+
+const DEMO_SEEN_KEY = 'free-world-2d:demo-seen';
+
+/**
+ * Whether the first-visit demo prompt has already been handled. If the browser gives us
+ * nowhere to remember it, report "seen" so we never nag on every visit.
+ */
+export function hasSeenDemo(store: Store | null = defaultStore()): boolean {
+  if (!store) return true;
+  try {
+    return store.getItem(DEMO_SEEN_KEY) === '1';
+  } catch {
+    return true;
+  }
+}
+
+export function markDemoSeen(store: Store | null = defaultStore()): void {
+  if (!store) return;
+  try {
+    store.setItem(DEMO_SEEN_KEY, '1');
+  } catch {
+    // nothing to do: the prompt may show again next visit
+  }
+}
