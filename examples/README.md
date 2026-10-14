@@ -20,6 +20,7 @@ card to the gallery. No code changes are needed.
 | `knock-down.json` | A ball sends a stack of icy boxes off the edge |
 | `roller-coaster.json` | A hand-drawn track with a bump between two drops |
 | `peg-board.json` | A ball ricochets down diamond pegs into a funnel |
+| `hill-climb.json` | A car with motor-driven wheels climbs a hill to a goal. You drive it (→ or D) |
 
 ## Adding your own
 
@@ -37,6 +38,10 @@ card to the gallery. No code changes are needed.
    ```
 
    `order` sets where it appears in the gallery; every design needs its own number.
+
+   If the design has to be driven (it contains a car with a motor), also add
+   `"controls": "drive"`. The tests then hold the forward key while checking that the goal
+   can be reached, and also check that it is **not** reached without driving.
 
 4. Run `npm test`. For every file in this folder the tests check that it is valid and
    importable and that it has a title, description, tip and order. They also play each

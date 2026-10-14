@@ -19,6 +19,9 @@ collapse to icons. Mouse, touch and pen all work.
 | **Box** | Click the canvas to place a box |
 | **Triangle** | Click the canvas to place a right-angled wedge (rotate it from the bottom bar) |
 | **Goal** | Click the canvas to place a goal zone; it lights up when anything free-moving (not locked) touches it during Play, and resets on Stop |
+| **Wheel** | Click the canvas to place a wheel. Select it to switch its **Motor** on, which makes the drive keys turn it |
+| **Pin** | Click one object, then another. The first is fixed to the second at a point (at its centre for a wheel or ball) but can still turn about it, which is what keeps a wheel on a car. Pinned objects move and rotate together while you edit, and a pin can be selected and deleted |
+| **Car** | Places a ready-made car: a body with a motor-driven wheel pinned at each end |
 | **Bottom bar** | Appears when an object is selected: pick its **Surface**, **Lock**/Unlock it, rotate it in 15° steps, or delete it (the Delete key works too) |
 | **Right-click** | Toggle lock on the object under the cursor (locked objects show a padlock while editing and stay fixed during simulation). On a touch screen use the Lock button in the bottom bar |
 | **Undo / Redo** | Step back and forward through your edits (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z; Cmd on a Mac). History lasts for the current visit |
@@ -41,6 +44,21 @@ Your scene is saved in the browser after every change and restored when you reop
 the page. It is stored per browser and per device (`localStorage`), so clearing site
 data removes it and another device starts empty — use **Export**/**Import** to keep a
 copy or move a scene. Nothing is sent to a server.
+
+### Driving
+
+Press **Play** with a motor-driven wheel on the canvas, then hold **→** or **D** to
+drive forward and **←** or **A** to reverse. Letting go holds the wheels. On a touch
+screen, large floating arrows appear at the bottom corners instead. The view follows
+the car as it goes, and returns to the editing view when you press Stop.
+
+How it is built: a wheel is a circle pinned to the car body at its axle. The pin keeps it
+exactly on the axle (it stays within a hundredth of a pixel, even on a 45° hill) while
+leaving it free to spin. The motor pushes each driven wheel toward a target speed, but
+never harder than a torque limit, so a steep hill can stall a weak car instead of the
+wheel simply forcing its way up. Parts pinned together don't collide with each other.
+Pins are saved in Export and Import, autosave and Undo. The **Hill climb** example is a
+car on a road with a hill.
 
 ### Surfaces
 

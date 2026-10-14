@@ -47,6 +47,30 @@
           </svg>
           <span>Goal</span>
         </button>
+        <button id="tool-wheel" class="palette-btn" data-tool="wheel" title="Place a wheel">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="8" />
+            <circle cx="12" cy="12" r="1.6" />
+            <path d="M12 4.5v5M12 14.5v5M4.5 12h5M14.5 12h5" />
+          </svg>
+          <span>Wheel</span>
+        </button>
+        <button id="tool-pin" class="palette-btn" data-tool="pin" title="Pin one object to another, so it can turn but not drift away">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="7.5" cy="7.5" r="3.5" />
+            <circle cx="16.5" cy="16.5" r="3.5" />
+            <path d="M10 10l4 4" />
+          </svg>
+          <span>Pin</span>
+        </button>
+        <button id="tool-car" class="palette-btn" data-tool="car" title="Place a ready-made car you can drive">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 15v-3l2.2-4H14l3.6 4H21v3" />
+            <circle cx="7.5" cy="16.5" r="2.2" />
+            <circle cx="16.5" cy="16.5" r="2.2" />
+          </svg>
+          <span>Car</span>
+        </button>
       </nav>
 
       <div id="actions">
@@ -156,6 +180,10 @@
           <dd>Load a saved scene file, replacing the canvas.</dd>
           <dt>Grid</dt>
           <dd>Show or hide the background grid, a visual guide for lining things up. Your choice is remembered.</dd>
+          <dt>Wheel / Pin / Car</dt>
+          <dd>Build a car, or drop a ready-made one with Car. Pin joins two objects at a point: click the wheel, then the body. The wheel stays fixed to the body but can still turn. Select a wheel and switch its Motor on to drive it.</dd>
+          <dt>Driving</dt>
+          <dd>Press Play, then hold → or D to drive and ← or A to reverse. On a touch screen use the arrows that appear on screen. The view follows the car.</dd>
           <dt>Examples</dt>
           <dd>Load a ready-made design, such as a slide, a roller coaster or a peg board. Press Play to watch it work, then change something. Undo brings your own scene back.</dd>
           <dt>Demo</dt>
@@ -182,11 +210,23 @@
           <select id="props-material"></select>
         </label>
         <button id="props-lock" class="tool-btn">Lock</button>
+        <button id="props-motor" class="tool-btn" hidden>Motor: off</button>
         <button id="props-rotate-left" class="tool-btn" title="Rotate 15° counter-clockwise">&#8634;</button>
         <button id="props-rotate-right" class="tool-btn" title="Rotate 15° clockwise">&#8635;</button>
         <button id="props-delete" class="tool-btn danger" title="Delete (Del)">Delete</button>
       </div>
       <div id="toast" role="status" hidden></div>
+
+      <!-- Shown while a car is being driven: floating buttons on touch screens, a hint elsewhere. -->
+      <div id="drive-pad" aria-label="Drive controls">
+        <button id="drive-left" class="drive-btn" aria-label="Reverse">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-8 7 8 7z" /></svg>
+        </button>
+        <button id="drive-right" class="drive-btn" aria-label="Forward">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l8 7-8 7z" /></svg>
+        </button>
+      </div>
+      <div id="drive-hint">Drive with <kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd></div>
 
       <div id="demo-prompt" role="dialog" aria-label="Watch a demo" hidden>
         <p>New here? Watch a short demo of how it works.</p>
