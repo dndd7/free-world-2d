@@ -1,4 +1,11 @@
-import { deserializeScene, translateObject, unionBounds, type SceneFile, type SceneObject } from './scene';
+import {
+  deserializeScene,
+  translateObject,
+  unionBounds,
+  type LoadedScene,
+  type SceneFile,
+  type SceneObject,
+} from './scene';
 
 export interface Example {
   id: string;
@@ -6,8 +13,10 @@ export interface Example {
   blurb: string;
   /** What to try changing once it works. */
   tip: string;
+  /** 'drive' for designs that need the drive keys held to reach their goal. */
+  controls?: 'drive';
   /** A fresh copy of the design each time, ready to be placed on screen. */
-  build(): SceneObject[];
+  build(): LoadedScene;
 }
 
 /**
@@ -30,6 +39,7 @@ function toExample(path: string, file: SceneFile): Example | null {
     title: file.meta?.title ?? id,
     blurb: file.meta?.description ?? '',
     tip: file.meta?.tip ?? '',
+    controls: file.meta?.controls,
     build: () => deserializeScene(file),
   };
 }
@@ -72,16 +82,16 @@ export function extentOf(objects: SceneObject[]): Extent {
 export function placeExample(
   example: Example,
   area: { x: number; y: number; w: number; h: number },
-): SceneObject[] {
-  const objects = example.build();
-  const e = extentOf(objects);
+): LoadedScene {
+  const scene = example.build();
+  const e = extentOf(scene.objects);
   const dx = area.x + Math.max(0, (area.w - e.w) / 2) - e.minX;
   const dy = area.y + Math.max(0, (area.h - e.h) / 2) - e.minY;
-  for (const obj of objects) translateObject(obj, dx, dy);
-  return objects;
+  for (const obj of scene.objects) translateObject(obj, dx, dy); // pins follow their bodies
+  return scene;
 }
 
 /** How big a design is, without keeping it around. */
 export function exampleExtent(example: Example): Extent {
-  return extentOf(example.build());
+  return extentOf(example.build().objects);
 }

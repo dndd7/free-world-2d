@@ -1,7 +1,7 @@
-import { Bodies, Body, Events, Pair, Query } from 'matter-js';
+import { Bodies, Body, Constraint, Events, Pair, Query } from 'matter-js';
 import type { Engine } from 'matter-js';
 
-export type ObjectType = 'ball' | 'box' | 'triangle' | 'plank' | 'track' | 'goal';
+export type ObjectType = 'ball' | 'box' | 'triangle' | 'plank' | 'track' | 'goal' | 'wheel' | 'chassis';
 export type Material = 'normal' | 'ice' | 'rubber' | 'sticky';
 
 export const OBJECT_LABELS: Record<ObjectType, string> = {
@@ -11,6 +11,8 @@ export const OBJECT_LABELS: Record<ObjectType, string> = {
   plank: 'Plank',
   track: 'Track',
   goal: 'Goal zone',
+  wheel: 'Wheel',
+  chassis: 'Car body',
 };
 
 export const MATERIAL_OPTIONS: { value: Material; label: string }[] = [
@@ -33,6 +35,8 @@ export interface SceneObject {
   spin: number;
   handleAngle: number;
   material: Material;
+  /** A wheel with its motor on is turned by the drive keys during Play. */
+  motor: boolean;
   reached: boolean;
   snapshot: { x: number; y: number; angle: number }[];
 }
@@ -80,6 +84,16 @@ const BASE_STYLE: Record<ObjectType, Style> = {
     stroke: '#3fae5c',
     surface: { friction: 0, frictionStatic: 0, restitution: 0 },
   },
+  wheel: {
+    fill: '#3b3f4d',
+    stroke: '#aab2c8',
+    surface: { friction: 0.9, frictionStatic: 1, restitution: 0.05 },
+  },
+  chassis: {
+    fill: '#d9534f',
+    stroke: '#f08a86',
+    surface: { friction: 0.3, frictionStatic: 0.5, restitution: 0 },
+  },
 };
 
 const MATERIAL_STYLE: Record<Exclude<Material, 'normal'>, Style> = {
@@ -101,6 +115,9 @@ const MATERIAL_STYLE: Record<Exclude<Material, 'normal'>, Style> = {
 };
 
 const BALL_RADIUS = 30;
+export const WHEEL_RADIUS = 28;
+const CHASSIS_W = 140;
+const CHASSIS_H = 30;
 const BOX_SIZE = 70;
 const TRIANGLE_W = 120;
 const TRIANGLE_H = 80;
@@ -124,6 +141,7 @@ function makeObject(type: ObjectType, bodies: Body[]): SceneObject {
     spin: 0,
     handleAngle: type === 'ball' ? -Math.PI / 2 : 0,
     material: 'normal',
+    motor: false,
     reached: false,
     snapshot: [],
   };
@@ -137,6 +155,14 @@ export function createBall(x: number, y: number): SceneObject {
 
 export function createBox(x: number, y: number): SceneObject {
   return makeObject('box', [Bodies.rectangle(x, y, BOX_SIZE, BOX_SIZE)]);
+}
+
+export function createWheel(x: number, y: number): SceneObject {
+  return makeObject('wheel', [Bodies.circle(x, y, WHEEL_RADIUS)]);
+}
+
+export function createChassis(x: number, y: number): SceneObject {
+  return makeObject('chassis', [Bodies.rectangle(x, y, CHASSIS_W, CHASSIS_H)]);
 }
 
 export function createTriangle(x: number, y: number): SceneObject {
@@ -292,11 +318,24 @@ export function translateObject(obj: SceneObject, dx: number, dy: number): void 
 }
 
 export function rotateObject(obj: SceneObject, delta: number): void {
-  const bounds = unionBounds(obj);
-  const center = { x: (bounds.min.x + bounds.max.x) / 2, y: (bounds.min.y + bounds.max.y) / 2 };
+  rotateObjects([obj], delta);
+}
+
+/** Turns several objects together about their shared centre, as one rigid piece. */
+export function rotateObjects(objs: SceneObject[], delta: number): void {
+  const min = { x: Infinity, y: Infinity };
+  const max = { x: -Infinity, y: -Infinity };
+  for (const obj of objs) {
+    const b = unionBounds(obj);
+    min.x = Math.min(min.x, b.min.x);
+    min.y = Math.min(min.y, b.min.y);
+    max.x = Math.max(max.x, b.max.x);
+    max.y = Math.max(max.y, b.max.y);
+  }
+  const center = { x: (min.x + max.x) / 2, y: (min.y + max.y) / 2 };
   // Matter's runtime accepts a pivot point here, but @types/matter-js doesn't declare it.
   const rotateAround = Body.rotate as (body: Body, rotation: number, point: Point) => void;
-  for (const b of obj.bodies) rotateAround(b, delta, center);
+  for (const obj of objs) for (const b of obj.bodies) rotateAround(b, delta, center);
 }
 
 export function captureSnapshot(obj: SceneObject): void {
@@ -340,6 +379,158 @@ export function watchGoals(engine: Engine, getObjects: () => SceneObject[]): voi
   });
 }
 
+// ---- Pins (joints) --------------------------------------------------------------
+
+/**
+ * A pin fixes one point of an object to one point of another. Each can still turn about
+ * that point, which is how a wheel stays attached to a car while spinning freely.
+ */
+export interface Joint {
+  id: string;
+  a: SceneObject;
+  b: SceneObject;
+  constraint: Constraint;
+}
+
+// Matter keeps the angle each pin point was last turned to, but @types/matter-js leaves it out.
+type PinConstraint = Constraint & { angleA: number; angleB: number };
+
+let nextJointId = 1;
+
+/** Only whole, single-body things can be pinned (not multi-segment tracks or goal zones). */
+export function canPin(obj: SceneObject): boolean {
+  return obj.bodies.length === 1 && obj.type !== 'track' && obj.type !== 'goal';
+}
+
+function rotatePoint(p: Point, angle: number): Point {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  return { x: p.x * c - p.y * s, y: p.x * s + p.y * c };
+}
+
+function makeConstraint(a: SceneObject, b: SceneObject, pointA: Point, pointB: Point): Constraint {
+  return Constraint.create({
+    bodyA: a.bodies[0],
+    bodyB: b.bodies[0],
+    // Matter turns these in place as the bodies turn, so each constraint needs its own copies.
+    pointA: { x: pointA.x, y: pointA.y },
+    pointB: { x: pointB.x, y: pointB.y },
+    length: 0,
+    stiffness: 1,
+    render: { visible: false },
+  });
+}
+
+/** Pins `a` to `b` at a point given in screen coordinates. Returns null if they can't be pinned. */
+export function createPin(a: SceneObject, b: SceneObject, at: Point): Joint | null {
+  if (a === b || !canPin(a) || !canPin(b)) return null;
+  const pa = a.bodies[0].position;
+  const pb = b.bodies[0].position;
+  const constraint = makeConstraint(a, b, { x: at.x - pa.x, y: at.y - pa.y }, { x: at.x - pb.x, y: at.y - pb.y });
+  return { id: `joint-${nextJointId++}`, a, b, constraint };
+}
+
+/** Where the pin currently sits on the screen. */
+export function jointAnchor(joint: Joint): Point {
+  const { bodyA, pointA, angleA } = joint.constraint as PinConstraint;
+  const offset = rotatePoint(pointA, bodyA!.angle - angleA);
+  return { x: bodyA!.position.x + offset.x, y: bodyA!.position.y + offset.y };
+}
+
+/** The anchor on each side, relative to the object's centre and independent of its turn. */
+function jointLocalAnchors(joint: Joint): { a: Point; b: Point } {
+  const c = joint.constraint as PinConstraint;
+  // Rounded so saved files read -52, not -52.00000000000002 (a thousandth of a pixel is invisible).
+  const tidy = (p: Point): Point => ({ x: Math.round(p.x * 1000) / 1000, y: Math.round(p.y * 1000) / 1000 });
+  return { a: tidy(rotatePoint(c.pointA, -c.angleA)), b: tidy(rotatePoint(c.pointB, -c.angleB)) };
+}
+
+export function jointsOf(obj: SceneObject, joints: Joint[]): Joint[] {
+  return joints.filter((j) => j.a === obj || j.b === obj);
+}
+
+/** `obj` plus everything pinned to it, directly or through other pinned objects. */
+export function connectedObjects(obj: SceneObject, joints: Joint[]): SceneObject[] {
+  const seen = new Set<SceneObject>([obj]);
+  const queue = [obj];
+  while (queue.length > 0) {
+    const current = queue.pop()!;
+    for (const j of joints) {
+      const other = j.a === current ? j.b : j.b === current ? j.a : null;
+      if (other && !seen.has(other)) {
+        seen.add(other);
+        queue.push(other);
+      }
+    }
+  }
+  return [...seen];
+}
+
+/**
+ * Parts pinned together must not collide with each other (a wheel would fight the car
+ * it is attached to). Gives every connected group a shared collision group until the
+ * returned function is called.
+ */
+export function groupJoinedBodies(objects: SceneObject[], joints: Joint[]): () => void {
+  const saved: [Body, number][] = [];
+  const done = new Set<SceneObject>();
+  for (const obj of objects) {
+    if (done.has(obj)) continue;
+    const members = connectedObjects(obj, joints);
+    members.forEach((m) => done.add(m));
+    if (members.length < 2) continue;
+    const group = Body.nextGroup(true);
+    for (const m of members) {
+      for (const body of m.bodies) {
+        saved.push([body, body.collisionFilter.group ?? 0]);
+        body.collisionFilter.group = group;
+      }
+    }
+  }
+  return () => saved.forEach(([body, group]) => (body.collisionFilter.group = group));
+}
+
+// ---- Motors ---------------------------------------------------------------------
+
+export type DriveInput = -1 | 0 | 1;
+
+/**
+ * Motor tuning, in Matter's units (radians per physics step). A wheel is pushed toward its
+ * target speed but never harder than `maxTorque`, so a steep hill can stall a weak car
+ * instead of the wheel simply forcing its way up.
+ */
+export const MOTOR = { maxSpeed: 0.2, maxTorque: 0.25, holdTorque: 0.1, gain: 40 } as const;
+
+export function hasMotor(objects: SceneObject[]): boolean {
+  return objects.some((o) => o.type === 'wheel' && o.motor && !o.locked);
+}
+
+/** Call once per physics step while playing: -1 reverses, 1 drives forward, 0 holds the wheels. */
+export function applyMotors(objects: SceneObject[], input: DriveInput): void {
+  const limit = input === 0 ? MOTOR.holdTorque : MOTOR.maxTorque;
+  const target = input * MOTOR.maxSpeed;
+  for (const obj of objects) {
+    if (obj.type !== 'wheel' || !obj.motor || obj.locked) continue;
+    const wheel = obj.bodies[0];
+    const push = MOTOR.gain * (target - wheel.angularVelocity);
+    wheel.torque += Math.min(limit, Math.max(-limit, push));
+  }
+}
+
+// ---- A ready-made car -----------------------------------------------------------
+
+/** A body with a wheel pinned at each end, both driven by the drive keys. */
+export function createCar(x: number, y: number): { objects: SceneObject[]; joints: Joint[] } {
+  const chassis = createChassis(x, y);
+  const wheels = [-52, 52].map((dx) => {
+    const wheel = createWheel(x + dx, y + 24);
+    wheel.motor = true;
+    return wheel;
+  });
+  const joints = wheels.map((w) => createPin(chassis, w, { ...w.bodies[0].position })!);
+  return { objects: [chassis, ...wheels], joints };
+}
+
 export function findObjectAtPoint(objects: SceneObject[], point: Point): SceneObject | null {
   for (let i = objects.length - 1; i >= 0; i--) {
     const obj = objects[i];
@@ -373,7 +564,19 @@ export interface SerializedObject {
   spin: number;
   handleAngle: number;
   material?: Material;
+  /** Only written for wheels whose motor is on. */
+  motor?: boolean;
   bodies: SerializedBody[];
+}
+
+/** A pin between two objects, by their position in the file's object list. */
+export interface SerializedJoint {
+  type: 'pin';
+  a: number;
+  b: number;
+  /** Where the pin sits on each object, relative to that object's centre and unturned. */
+  pointA: Point;
+  pointB: Point;
 }
 
 /** Optional description a scene file can carry, used by the example gallery. */
@@ -382,6 +585,8 @@ export interface SceneMeta {
   description?: string;
   tip?: string;
   order?: number;
+  /** 'drive': needs the drive keys held (the gallery tests hold forward for it). */
+  controls?: 'drive';
 }
 
 export interface SceneFile {
@@ -389,14 +594,20 @@ export interface SceneFile {
   version: 1;
   meta?: SceneMeta;
   objects: SerializedObject[];
+  joints?: SerializedJoint[];
+}
+
+export interface LoadedScene {
+  objects: SceneObject[];
+  joints: Joint[];
 }
 
 const OBJECT_TYPES = Object.keys(OBJECT_LABELS) as ObjectType[];
 const MATERIALS = MATERIAL_OPTIONS.map((m) => m.value);
 const isBar = (type: ObjectType) => type === 'track' || type === 'plank';
 
-export function serializeScene(objects: SceneObject[]): SceneFile {
-  return {
+export function serializeScene(objects: SceneObject[], joints: Joint[] = []): SceneFile {
+  const file: SceneFile = {
     app: 'free-world-2d',
     version: 1,
     objects: objects.map((obj) => ({
@@ -405,6 +616,7 @@ export function serializeScene(objects: SceneObject[]): SceneFile {
       spin: obj.spin,
       handleAngle: obj.handleAngle,
       material: obj.material,
+      ...(obj.motor ? { motor: true } : {}),
       bodies: obj.bodies.map((b) => ({
         x: b.position.x,
         y: b.position.y,
@@ -420,19 +632,28 @@ export function serializeScene(objects: SceneObject[]): SceneFile {
       })),
     })),
   };
+  const pins = joints.flatMap((j) => {
+    const a = objects.indexOf(j.a);
+    const b = objects.indexOf(j.b);
+    if (a < 0 || b < 0) return []; // never write a pin to something that is not in the scene
+    const anchors = jointLocalAnchors(j);
+    return [{ type: 'pin' as const, a, b, pointA: anchors.a, pointB: anchors.b }];
+  });
+  if (pins.length > 0) file.joints = pins;
+  return file;
 }
 
 function isFiniteNumber(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v);
 }
 
-export function deserializeScene(data: unknown): SceneObject[] {
+export function deserializeScene(data: unknown): LoadedScene {
   const file = data as Partial<SceneFile> | null;
   if (!file || file.app !== 'free-world-2d' || file.version !== 1 || !Array.isArray(file.objects)) {
     throw new Error('Not a Free World 2D scene file.');
   }
 
-  return file.objects.map((raw, i) => {
+  const objects = file.objects.map((raw, i) => {
     const label = `Object ${i + 1}`;
     if (!raw || !OBJECT_TYPES.includes(raw.type) || !Array.isArray(raw.bodies) || raw.bodies.length === 0) {
       throw new Error(`${label} is malformed.`);
@@ -464,6 +685,12 @@ export function deserializeScene(data: unknown): SceneObject[] {
       case 'goal':
         obj = createGoal(first.x, first.y);
         break;
+      case 'wheel':
+        obj = createWheel(first.x, first.y);
+        break;
+      case 'chassis':
+        obj = createChassis(first.x, first.y);
+        break;
       case 'plank':
         obj = makeObject('plank', [
           createBar(first.x, first.y, first.length as number, PLANK_THICKNESS, first.angle),
@@ -480,7 +707,27 @@ export function deserializeScene(data: unknown): SceneObject[] {
     obj.spin = isFiniteNumber(raw.spin) ? raw.spin : 0;
     obj.handleAngle = isFiniteNumber(raw.handleAngle) ? raw.handleAngle : obj.handleAngle;
     if (raw.material && MATERIALS.includes(raw.material)) applyMaterial(obj, raw.material);
+    obj.motor = raw.type === 'wheel' && raw.motor === true;
     setLocked(obj, raw.locked === true);
     return obj;
   });
+
+  const joints = (file.joints ?? []).map((raw, i) => {
+    const label = `Pin ${i + 1}`;
+    const a = objects[raw?.a as number];
+    const b = objects[raw?.b as number];
+    if (raw?.type !== 'pin' || !a || !b || a === b) throw new Error(`${label} does not join two different objects.`);
+    if (!canPin(a) || !canPin(b)) throw new Error(`${label} is attached to something that cannot be pinned.`);
+    const ok = (p: unknown): p is Point => !!p && isFiniteNumber((p as Point).x) && isFiniteNumber((p as Point).y);
+    if (!ok(raw.pointA) || !ok(raw.pointB)) throw new Error(`${label} has an invalid position.`);
+    const constraint = makeConstraint(
+      a,
+      b,
+      rotatePoint(raw.pointA, a.bodies[0].angle),
+      rotatePoint(raw.pointB, b.bodies[0].angle),
+    );
+    return { id: `joint-${nextJointId++}`, a, b, constraint } satisfies Joint;
+  });
+
+  return { objects, joints };
 }

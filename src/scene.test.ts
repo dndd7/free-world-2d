@@ -83,13 +83,13 @@ describe('export / import', () => {
 
   it('round-trips every object type with its material, lock state and spin', () => {
     const first = serializeScene(sampleScene());
-    const second = serializeScene(deserializeScene(JSON.parse(JSON.stringify(first))));
+    const second = serializeScene(deserializeScene(JSON.parse(JSON.stringify(first))).objects);
     expect(second.objects.map((o) => o.type)).toEqual(first.objects.map((o) => o.type));
     expectClose(second, first);
   });
 
   it('restores materials and locks on the rebuilt objects', () => {
-    const rebuilt = deserializeScene(JSON.parse(JSON.stringify(serializeScene(sampleScene()))));
+    const rebuilt = deserializeScene(JSON.parse(JSON.stringify(serializeScene(sampleScene())))).objects;
     expect(rebuilt.map((o) => o.material)).toEqual(['rubber', 'normal', 'ice', 'sticky', 'normal', 'normal']);
     expect(rebuilt.map((o) => o.locked)).toEqual([false, true, false, true, false, false]);
     expect(rebuilt[0].spin).toBe(7.5);
@@ -101,7 +101,7 @@ describe('export / import', () => {
       version: 1,
       objects: [{ type: 'ball', locked: false, spin: 1, handleAngle: 0, bodies: [{ x: 10, y: 20, angle: 0 }] }],
     };
-    const [ball] = deserializeScene(old);
+    const [ball] = deserializeScene(old).objects;
     expect(ball.material).toBe('normal');
     expect(ball.bodies[0].position).toMatchObject({ x: 10, y: 20 });
   });

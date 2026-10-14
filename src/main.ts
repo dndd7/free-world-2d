@@ -1,5 +1,6 @@
 import { Composite, Engine, Events, Render, Runner } from 'matter-js';
 import { startDemo, type DemoHost } from './demo';
+import { DriveControls, followCamera, type View } from './drive';
 import { EXAMPLES, exampleExtent, placeExample, type Example } from './examples';
 import { SceneHistory } from './history';
 import {
@@ -7,24 +8,36 @@ import {
   OBJECT_LABELS,
   applyInitialSpin,
   applyMaterial,
+  applyMotors,
+  canPin,
   captureSnapshot,
+  connectedObjects,
   createBall,
   createBox,
+  createCar,
   createGoal,
+  createPin,
   createPlank,
   createTrack,
   createTriangle,
+  createWheel,
   deserializeScene,
   findObjectAtPoint,
+  groupJoinedBodies,
+  hasMotor,
   installSurfaceRules,
+  jointAnchor,
+  jointsOf,
   resetGoals,
   restoreSnapshot,
-  rotateObject,
+  rotateObjects,
   serializeScene,
   setLocked,
   translateObject,
   unionBounds,
   watchGoals,
+  type Joint,
+  type LoadedScene,
   type Material,
   type Point,
   type SceneObject,
@@ -33,13 +46,21 @@ import { hasSeenDemo, loadSavedScene, markDemoSeen, saveScene } from './storage'
 import { drawThumbnail } from './thumbnail';
 import './style.css';
 
-type Tool = 'select' | 'draw' | 'plank' | 'ball' | 'box' | 'triangle' | 'goal';
+type Tool = 'select' | 'draw' | 'plank' | 'ball' | 'box' | 'triangle' | 'goal' | 'wheel' | 'pin' | 'car';
 
-const PLACERS: Partial<Record<Tool, (x: number, y: number) => SceneObject>> = {
-  ball: createBall,
-  box: createBox,
-  triangle: createTriangle,
-  goal: createGoal,
+const single = (make: (x: number, y: number) => SceneObject) => (x: number, y: number): LoadedScene => ({
+  objects: [make(x, y)],
+  joints: [],
+});
+
+/** Tools that drop something onto the canvas with a single click. */
+const PLACERS: Partial<Record<Tool, (x: number, y: number) => LoadedScene>> = {
+  ball: single(createBall),
+  box: single(createBox),
+  triangle: single(createTriangle),
+  goal: single(createGoal),
+  wheel: single(createWheel),
+  car: createCar,
 };
 
 const ROTATE_STEP = (15 * Math.PI) / 180;
@@ -47,6 +68,8 @@ const ROTATE_STEP = (15 * Math.PI) / 180;
 const HANDLE_RADIUS_PAD = 14;
 const HANDLE_HIT_RADIUS = 14;
 const HANDLE_HIT_RADIUS_TOUCH = 26;
+const PIN_HIT_RADIUS = 11;
+const PIN_HIT_RADIUS_TOUCH = 20;
 const MAX_SPIN = 18; // radians per second
 
 const canvas = document.getElementById('sim') as HTMLCanvasElement;
@@ -64,6 +87,11 @@ const examplesBtn = document.getElementById('examples-btn') as HTMLButtonElement
 const examplesPanel = document.getElementById('examples-panel') as HTMLDivElement;
 const examplesGrid = document.getElementById('examples-grid') as HTMLDivElement;
 const demoPrompt = document.getElementById('demo-prompt') as HTMLDivElement;
+const controls = new DriveControls(
+  document.getElementById('drive-pad') as HTMLDivElement,
+  document.getElementById('drive-left') as HTMLButtonElement,
+  document.getElementById('drive-right') as HTMLButtonElement,
+);
 
 installSurfaceRules();
 
@@ -78,6 +106,7 @@ const render = Render.create({
     width: window.innerWidth,
     height: window.innerHeight,
     pixelRatio: window.devicePixelRatio,
+    hasBounds: true, // lets the camera follow a car during Play
     wireframes: false,
     // Transparent so the grid layer (and the page's dark background) show through.
     background: 'transparent',
@@ -88,7 +117,14 @@ let tool: Tool = 'select';
 let isPlaying = false;
 let demoActive = false; // while true, edits are not autosaved or added to undo history
 const objects: SceneObject[] = [];
+const joints: Joint[] = [];
 let selected: SceneObject | null = null;
+let selectedJoint: Joint | null = null;
+/** The Pin tool takes two clicks: this is the first object, waiting for the second. */
+let pinFrom: { obj: SceneObject; at: Point } | null = null;
+let pinCursor: Point | null = null;
+let restoreGroups: (() => void) | null = null;
+let camera: View = { x: 0, y: 0 };
 
 watchGoals(engine, () => objects);
 
@@ -126,7 +162,7 @@ let history = new SceneHistory('');
 let warnedAboutSaving = false;
 
 function sceneJson(): string {
-  return JSON.stringify(serializeScene(objects));
+  return JSON.stringify(serializeScene(objects, joints));
 }
 
 function persist(json: string): void {
@@ -151,15 +187,19 @@ function commit(): void {
 }
 
 function removeAllObjects(): void {
+  joints.forEach((j) => Composite.remove(world, j.constraint));
+  joints.length = 0;
   objects.forEach((obj) => Composite.remove(world, obj.bodies));
   objects.length = 0;
   selected = null;
+  selectedJoint = null;
+  pinFrom = null;
 }
 
 function loadState(json: string): void {
   const selectedIndex = selected ? objects.indexOf(selected) : -1;
   removeAllObjects();
-  deserializeScene(JSON.parse(json)).forEach(addObject);
+  addScene(deserializeScene(JSON.parse(json)));
   selected = objects[selectedIndex] ?? null;
   persist(json);
   refreshActions();
@@ -206,12 +246,45 @@ function setPlayingUi(playing: boolean): void {
 
 function selectTool(t: Tool): void {
   tool = t;
+  if (t !== 'pin') pinFrom = null;
   setActiveToolButton(t);
 }
 
 function addObject(obj: SceneObject): void {
   objects.push(obj);
   Composite.add(world, obj.bodies);
+}
+
+function addJoint(joint: Joint): void {
+  joints.push(joint);
+  Composite.add(world, joint.constraint);
+}
+
+function addScene(scene: LoadedScene): void {
+  scene.objects.forEach(addObject);
+  scene.joints.forEach(addJoint);
+}
+
+function removeJoint(joint: Joint): void {
+  Composite.remove(world, joint.constraint);
+  const i = joints.indexOf(joint);
+  if (i >= 0) joints.splice(i, 1);
+  if (selectedJoint === joint) selectedJoint = null;
+}
+
+function findJointAt(p: Point, touch: boolean): Joint | null {
+  const reach = touch ? PIN_HIT_RADIUS_TOUCH : PIN_HIT_RADIUS;
+  let best: Joint | null = null;
+  let bestDist = reach;
+  for (const j of joints) {
+    const a = jointAnchor(j);
+    const d = Math.hypot(p.x - a.x, p.y - a.y);
+    if (d <= bestDist) {
+      best = j;
+      bestDist = d;
+    }
+  }
+  return best;
 }
 
 function getHandlePosition(obj: SceneObject): Point {
@@ -290,11 +363,17 @@ canvas.addEventListener('pointerdown', (e) => {
     return;
   }
 
+  if (tool === 'pin') {
+    handlePinClick(p);
+    return;
+  }
+
   const place = PLACERS[tool];
   if (place) {
-    const obj = place(p.x, p.y);
-    addObject(obj);
-    selected = obj;
+    const scene = place(p.x, p.y);
+    addScene(scene);
+    selected = scene.objects[0] ?? null;
+    selectedJoint = null;
     selectTool('select');
     commit();
     return;
@@ -310,9 +389,56 @@ canvas.addEventListener('pointerdown', (e) => {
     }
   }
 
+  const jointHit = findJointAt(p, e.pointerType === 'touch');
+  if (jointHit) {
+    selectedJoint = jointHit;
+    selected = null;
+    return;
+  }
+
   const hit = findObjectAtPoint(objects, p);
   selected = hit;
+  selectedJoint = null;
   if (hit) dragging = { obj: hit, lastX: p.x, lastY: p.y };
+});
+
+/**
+ * The Pin tool: click one object, then another. A wheel (or ball) is pinned at its centre so it
+ * can spin; anything else is pinned where it was clicked.
+ */
+function handlePinClick(p: Point): void {
+  const hit = findObjectAtPoint(objects, p);
+  if (!hit || !canPin(hit)) {
+    toast(pinFrom ? 'Click a second object to pin it to.' : 'Click the object to pin first, such as a wheel.');
+    return;
+  }
+  if (!pinFrom) {
+    pinFrom = { obj: hit, at: p };
+    selected = hit;
+    toast('Now click what to pin it to, such as the car body.');
+    return;
+  }
+  if (hit === pinFrom.obj) {
+    pinFrom = null; // clicking the same object again cancels
+    return;
+  }
+  const first = pinFrom.obj;
+  const centre = first.type === 'wheel' || first.type === 'ball' ? first.bodies[0].position : pinFrom.at;
+  const joint = createPin(hit, first, { x: centre.x, y: centre.y });
+  pinFrom = null;
+  if (!joint) {
+    toast("Those can't be pinned together.");
+    return;
+  }
+  addJoint(joint);
+  selectedJoint = joint;
+  selected = null;
+  selectTool('select');
+  commit();
+}
+
+canvas.addEventListener('pointermove', (e) => {
+  if (pinFrom) pinCursor = getCanvasPoint(e);
 });
 
 window.addEventListener('pointermove', (e) => {
@@ -335,7 +461,9 @@ window.addEventListener('pointermove', (e) => {
   }
 
   if (dragging) {
-    translateObject(dragging.obj, p.x - dragging.lastX, p.y - dragging.lastY);
+    const dx = p.x - dragging.lastX;
+    const dy = p.y - dragging.lastY;
+    for (const part of connectedObjects(dragging.obj, joints)) translateObject(part, dx, dy);
     dragging.lastX = p.x;
     dragging.lastY = p.y;
   }
@@ -384,6 +512,16 @@ playBtn.addEventListener('click', () => {
     objects.forEach(captureSnapshot);
     objects.forEach(applyInitialSpin);
     resetGoals(objects);
+    restoreGroups = groupJoinedBodies(objects, joints);
+    if (hasMotor(objects)) {
+      controls.enable();
+      toast(
+        window.matchMedia('(pointer: coarse)').matches
+          ? 'Hold the arrows on screen to drive.'
+          : 'Drive with ← → or A / D.',
+        4500,
+      );
+    }
     Runner.run(runner, engine);
     isPlaying = true;
     setPlayingUi(true);
@@ -392,9 +530,42 @@ playBtn.addEventListener('click', () => {
     Runner.stop(runner);
     objects.forEach(restoreSnapshot);
     resetGoals(objects);
+    restoreGroups?.();
+    restoreGroups = null;
+    controls.disable();
     isPlaying = false;
     setPlayingUi(false);
     setToolbarDisabled(false);
+  }
+});
+
+// ---- Driving --------------------------------------------------------------
+
+Events.on(engine, 'beforeUpdate', () => {
+  if (isPlaying && controls.isEnabled) applyMotors(objects, controls.input);
+});
+
+function setCamera(next: View): void {
+  camera = next;
+  render.bounds.min.x = next.x;
+  render.bounds.min.y = next.y;
+  render.bounds.max.x = next.x + window.innerWidth;
+  render.bounds.max.y = next.y + window.innerHeight;
+  gridLayer.style.backgroundPosition = `${-next.x}px ${-next.y}px`;
+}
+
+Events.on(render, 'beforeRender', () => {
+  if (isPlaying && controls.isEnabled) {
+    const wheels = objects.filter((o) => o.type === 'wheel' && o.motor);
+    if (wheels.length > 0) {
+      const target = {
+        x: wheels.reduce((sum, w) => sum + w.bodies[0].position.x, 0) / wheels.length,
+        y: wheels.reduce((sum, w) => sum + w.bodies[0].position.y, 0) / wheels.length,
+      };
+      setCamera(followCamera(camera, target, window.innerWidth, window.innerHeight));
+    }
+  } else if (camera.x !== 0 || camera.y !== 0) {
+    setCamera({ x: 0, y: 0 }); // back to the editing view
   }
 });
 
@@ -473,7 +644,7 @@ function buildExampleCards(): void {
     card.className = 'example-card';
 
     const thumb = document.createElement('canvas');
-    drawThumbnail(thumb, example.build());
+    drawThumbnail(thumb, example.build().objects);
     const title = document.createElement('strong');
     title.textContent = example.title;
     const blurb = document.createElement('span');
@@ -502,7 +673,7 @@ function loadExample(example: Example): void {
   const extent = exampleExtent(example);
 
   removeAllObjects();
-  placeExample(example, area).forEach(addObject);
+  addScene(placeExample(example, area));
   selectTool('select');
   setExamplesOpen(false);
   commit(); // one undoable step
@@ -526,6 +697,7 @@ const propsMaterial = document.getElementById('props-material') as HTMLSelectEle
 const propsLock = document.getElementById('props-lock') as HTMLButtonElement;
 const propsRotateLeft = document.getElementById('props-rotate-left') as HTMLButtonElement;
 const propsRotateRight = document.getElementById('props-rotate-right') as HTMLButtonElement;
+const propsMotor = document.getElementById('props-motor') as HTMLButtonElement;
 const propsDelete = document.getElementById('props-delete') as HTMLButtonElement;
 
 for (const opt of MATERIAL_OPTIONS) {
@@ -535,20 +707,39 @@ for (const opt of MATERIAL_OPTIONS) {
 let propsKey = '';
 
 function syncPropsPanel(): void {
-  const key = selected && !isPlaying ? `${selected.id}|${selected.material}|${selected.locked}` : '';
+  const showing = !isPlaying && (selectedJoint !== null || selected !== null);
+  const key = !showing
+    ? ''
+    : selectedJoint
+      ? `pin|${selectedJoint.id}`
+      : `${selected!.id}|${selected!.material}|${selected!.locked}|${selected!.motor}`;
   if (key === propsKey) return;
   propsKey = key;
 
   propsPanel.hidden = key === '';
-  if (!selected || key === '') return;
+  if (key === '') return;
 
-  propsTitle.textContent = OBJECT_LABELS[selected.type];
-  propsMaterialWrap.hidden = selected.type === 'goal';
-  propsMaterial.value = selected.material;
-  propsLock.hidden = selected.type === 'goal';
-  propsLock.textContent = selected.locked ? 'Unlock' : 'Lock';
-  propsLock.title = selected.locked ? 'Let this object move during Play' : 'Fix this object in place during Play';
-  propsRotateLeft.hidden = propsRotateRight.hidden = selected.type === 'ball';
+  if (selectedJoint) {
+    // a pin only has one thing to do
+    propsTitle.textContent = 'Pin';
+    propsMaterialWrap.hidden = true;
+    propsLock.hidden = true;
+    propsMotor.hidden = true;
+    propsRotateLeft.hidden = propsRotateRight.hidden = true;
+    return;
+  }
+
+  const obj = selected!;
+  propsTitle.textContent = OBJECT_LABELS[obj.type];
+  propsMaterialWrap.hidden = obj.type === 'goal';
+  propsMaterial.value = obj.material;
+  propsLock.hidden = obj.type === 'goal';
+  propsLock.textContent = obj.locked ? 'Unlock' : 'Lock';
+  propsLock.title = obj.locked ? 'Let this object move during Play' : 'Fix this object in place during Play';
+  propsMotor.hidden = obj.type !== 'wheel';
+  propsMotor.textContent = obj.motor ? 'Motor: on' : 'Motor: off';
+  propsMotor.title = obj.motor ? 'This wheel is turned by the drive keys' : 'Turn this wheel with the drive keys';
+  propsRotateLeft.hidden = propsRotateRight.hidden = obj.type === 'ball' || obj.type === 'wheel';
 }
 
 propsMaterial.addEventListener('change', () => {
@@ -556,22 +747,34 @@ propsMaterial.addEventListener('change', () => {
   applyMaterial(selected, propsMaterial.value as Material);
   commit();
 });
+propsMotor.addEventListener('click', () => {
+  if (!selected || selected.type !== 'wheel' || isPlaying) return;
+  selected.motor = !selected.motor;
+  commit();
+});
 propsLock.addEventListener('click', () => {
   if (selected && !isPlaying) toggleLock(selected);
 });
 propsRotateLeft.addEventListener('click', () => {
   if (!selected || isPlaying) return;
-  rotateObject(selected, -ROTATE_STEP);
+  rotateObjects(connectedObjects(selected, joints), -ROTATE_STEP);
   commit();
 });
 propsRotateRight.addEventListener('click', () => {
   if (!selected || isPlaying) return;
-  rotateObject(selected, ROTATE_STEP);
+  rotateObjects(connectedObjects(selected, joints), ROTATE_STEP);
   commit();
 });
 
 function deleteSelected(): void {
-  if (!selected || isPlaying || demoActive) return;
+  if (isPlaying || demoActive) return;
+  if (selectedJoint) {
+    removeJoint(selectedJoint);
+    commit();
+    return;
+  }
+  if (!selected) return;
+  for (const j of jointsOf(selected, joints)) removeJoint(j);
   Composite.remove(world, selected.bodies);
   objects.splice(objects.indexOf(selected), 1);
   selected = null;
@@ -586,6 +789,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     setHelpOpen(false);
     setExamplesOpen(false);
+    pinFrom = null;
     return;
   }
 
@@ -626,7 +830,7 @@ exportBtn.addEventListener('click', () => {
     alert('Nothing to export yet — draw or place something first.');
     return;
   }
-  const json = JSON.stringify(serializeScene(objects), null, 2);
+  const json = JSON.stringify(serializeScene(objects, joints), null, 2);
   const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
   const link = document.createElement('a');
   link.href = url;
@@ -647,7 +851,7 @@ importFile.addEventListener('change', async () => {
   try {
     const imported = deserializeScene(JSON.parse(await file.text()));
     removeAllObjects();
-    imported.forEach(addObject);
+    addScene(imported);
     commit();
   } catch (err) {
     alert(`Couldn't import that file: ${err instanceof Error ? err.message : 'invalid file'}`);
@@ -687,10 +891,54 @@ function drawGoalLabel(ctx: CanvasRenderingContext2D, goal: SceneObject): void {
   ctx.restore();
 }
 
+function drawPin(ctx: CanvasRenderingContext2D, at: Point, selectedPin: boolean): void {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(at.x, at.y, selectedPin ? 9 : 6.5, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1a1f';
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = selectedPin ? '#5ad1e6' : '#f2f2f5';
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(at.x, at.y, 1.8, 0, Math.PI * 2);
+  ctx.fillStyle = selectedPin ? '#5ad1e6' : '#f2f2f5';
+  ctx.fill();
+  ctx.restore();
+}
+
+/** Lines across a wheel or ball that turn with it, so spin and driving can actually be seen. */
+function drawSpokes(ctx: CanvasRenderingContext2D, obj: SceneObject): void {
+  const body = obj.bodies[0];
+  const radius = body.circleRadius ?? 0;
+  if (!radius) return;
+  ctx.save();
+  ctx.translate(body.position.x, body.position.y);
+  ctx.rotate(body.angle);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  if (obj.type === 'wheel') {
+    for (let i = 0; i < 4; i++) {
+      const a = (i * Math.PI) / 2;
+      ctx.moveTo(Math.cos(a) * 5, Math.sin(a) * 5);
+      ctx.lineTo(Math.cos(a) * (radius - 4), Math.sin(a) * (radius - 4));
+    }
+  } else {
+    ctx.moveTo(0, 0);
+    ctx.lineTo(radius - 4, 0);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
 Events.on(render, 'afterRender', () => {
   syncPropsPanel();
   const ctx = render.context;
   ctx.save();
+  // The camera follows the car while playing; everything below is drawn in world space.
+  ctx.translate(-camera.x, -camera.y);
 
   if (isDrawingStroke && drawPoints.length > 1) {
     ctx.strokeStyle = '#c9a86a';
@@ -730,6 +978,22 @@ Events.on(render, 'afterRender', () => {
         bounds.max.y - bounds.min.y + 12,
       );
     }
+  }
+
+  for (const obj of objects) if (obj.type === 'wheel' || obj.type === 'ball') drawSpokes(ctx, obj);
+  for (const j of joints) drawPin(ctx, jointAnchor(j), j === selectedJoint && !isPlaying);
+
+  if (pinFrom && pinCursor && !isPlaying) {
+    const b = unionBounds(pinFrom.obj);
+    ctx.strokeStyle = '#5ad1e6';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 5]);
+    ctx.strokeRect(b.min.x - 5, b.min.y - 5, b.max.x - b.min.x + 10, b.max.y - b.min.y + 10);
+    ctx.beginPath();
+    ctx.moveTo(pinFrom.at.x, pinFrom.at.y);
+    ctx.lineTo(pinCursor.x, pinCursor.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
   }
 
   if (selected && selected.type === 'ball' && tool === 'select' && !isPlaying) {
@@ -801,7 +1065,7 @@ const demoHost: DemoHost = {
         commit(); // an undoable step, so the user's earlier scene is one Undo away
       } else {
         removeAllObjects();
-        deserializeScene(JSON.parse(stashedScene)).forEach(addObject);
+        addScene(deserializeScene(JSON.parse(stashedScene)));
       }
     } finally {
       demoActive = false;
@@ -842,7 +1106,7 @@ document.getElementById('demo-prompt-start')!.addEventListener('click', () => {
 const savedScene = loadSavedScene();
 if (savedScene) {
   try {
-    deserializeScene(JSON.parse(savedScene)).forEach(addObject);
+    addScene(deserializeScene(JSON.parse(savedScene)));
     if (objects.length > 0) toast('Restored your last scene');
   } catch {
     removeAllObjects(); // unreadable save: start fresh; the next edit overwrites it
