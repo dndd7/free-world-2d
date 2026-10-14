@@ -71,7 +71,16 @@ auto-deploy `dist/` to GitHub Pages on every push to `master` (running the tests
 first, so a failing test blocks the deploy); enable Pages for the repo
 (Settings → Pages → Source: GitHub Actions) to use it.
 
-## Security checks
+## Contributing
+
+Bug reports, ideas and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md)
+for how to run the project, how the code is laid out, and what to check before opening a
+pull request.
+
+## Security
+
+To report a vulnerability, please follow [SECURITY.md](SECURITY.md) rather than opening a
+public issue. The checks that run on this repo:
 
 - **Dependency audit** — `npm audit --audit-level=high` runs on every push, on pull
   requests and weekly (`.github/workflows/security.yml`); run it locally with `npm audit`.
