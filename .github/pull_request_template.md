@@ -4,7 +4,7 @@
 
 ## How it was checked
 
-<!-- Pull requests only run the security checks automatically, so please run these yourself. -->
+<!-- Please run the first two yourself before opening the pull request. -->
 
 - [ ] `npm test` passes
 - [ ] `npm run build` passes

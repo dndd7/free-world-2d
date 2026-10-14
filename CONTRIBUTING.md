@@ -31,8 +31,8 @@ without a browser, so a change to how things move can be tested by stepping the 
 ## Making a change
 
 1. Fork the repo (or create a branch) and make your change.
-2. Run `npm test` and `npm run build`. Pull requests only run the security checks
-   automatically (CodeQL and a dependency audit), so the tests are on you.
+2. Run `npm test` and `npm run build` before you open the pull request, so you find
+   problems on your own machine first. Automated checks also run on every pull request.
 3. For anything you can see on screen, try it in a browser, including a phone-sized window
    (about 375px wide). The layout changes a lot at that size.
 4. Open a pull request. The template has a short checklist.
